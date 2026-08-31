@@ -1,0 +1,32 @@
+name: Auto Changelog
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  changelog:
+    name: Generate changelog on push to main
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Generate changelog
+      uses: Chocobozzz/auto-changelog-action@master
+      with:
+        file-name: CHANGELOG.md
+        commit-prefix: '- '
+
+    - name: Push changes
+      uses: actions-js/push@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        message: 'docs: update changelog'
+        force: false

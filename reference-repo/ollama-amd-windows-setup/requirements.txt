@@ -1,0 +1,4 @@
+requests>=2.28.0
+
+# Optional: Ollama Python library (alternative to requests)
+# ollama>=0.1.0

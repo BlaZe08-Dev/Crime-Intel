@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        python-version: [ '3.10', '3.11', '3.12' ]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Validate Python syntax
+      run: |
+        python -m py_compile scripts/verify_gpu.py scripts/benchmark.py scripts/pull_models.py scripts/chat.py
+
+    - name: Validate YAML
+      if: runner.os != 'Windows'
+      run: |
+        python -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"
+
+    - name: Check imports
+      run: python -c "import requests"
+
+    - name: Lint Python (basic)
+      if: matrix.python-version == '3.11'
+      run: |
+        pip install flake8
+        flake8 scripts/*.py --count --select=E9,F63,F7,F82 --show-source --statistics || true
+
+  security:
+    name: Security checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install bandit
+        pip install -r requirements.txt
+
+    - name: Run security checks
+      run: bandit -r scripts/ --skip B404,B603,B607 || true

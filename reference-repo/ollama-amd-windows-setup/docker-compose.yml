@@ -1,0 +1,70 @@
+version: "3.8"
+
+# Ollama with AMD GPU on Windows — Docker Method
+#
+# IMPORTANT: Docker Desktop on Windows uses WSL2 as its backend. WSL2 does NOT
+# expose /dev/kfd to containers, so the standard ROCm Docker image will fall
+# back to CPU on Windows. This compose file uses the Vulkan backend instead,
+# which works through the standard AMD Windows drivers.
+#
+# Requirements:
+#   - Docker Desktop 4.x+ with WSL2 backend
+#   - AMD Adrenalin drivers 24.x+
+#   - Ollama image v0.12.11+ (bundles Vulkan)
+#
+# Usage:
+#   docker compose up -d
+#   docker compose exec ollama ollama run llama3.2
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-amd
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      # Enable Vulkan backend — the only AMD GPU path that works in Docker on Windows
+      OLLAMA_VULKAN: "1"
+      OLLAMA_DEBUG: "0"
+      # Reserve VRAM headroom (bytes). ~10% of your VRAM.
+      # 8GB card:  838860800  (800MB)
+      # 12GB card: 1342177280 (1.25GB)
+      # 16GB card: 1610612736 (1.5GB)
+      # 24GB card: 2147483648 (2GB)
+      OLLAMA_GPU_OVERHEAD: "1073741824"
+      OLLAMA_KEEP_ALIVE: "300"
+    # Note: /dev/kfd is NOT available in Docker Desktop on Windows.
+    # Vulkan operates through the standard Vulkan ICD loader.
+
+  # Optional: Open WebUI (enable with: docker compose --profile webui up -d)
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    volumes:
+      - open_webui_data:/app/backend/data
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_SECRET_KEY: "change-me-in-production"
+    depends_on:
+      - ollama
+    profiles:
+      - webui
+
+volumes:
+  ollama_data:
+    driver: local
+  open_webui_data:
+    driver: local
+
+# For Linux with ROCm (use INSTEAD of this compose file):
+#   docker run -d \
+#     --device /dev/kfd --device /dev/dri \
+#     -v ollama:/root/.ollama -p 11434:11434 \
+#     -e OLLAMA_FLASH_ATTENTION=1 \
+#     --name ollama ollama/ollama:rocm
