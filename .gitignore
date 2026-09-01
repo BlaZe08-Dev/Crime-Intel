@@ -40,3 +40,7 @@ migrate_working_dir/
 .env
 .env.*
 !.env.example
+
+# Vendored upstream reference implementations (kept on disk, not tracked)
+# Real-ESRGAN / GFPGAN / CodeFormer / ollama-amd-windows-setup — see docs/ReferenceRepo.md
+reference-repo/
