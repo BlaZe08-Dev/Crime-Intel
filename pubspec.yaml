@@ -4,31 +4,27 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
-  flutter: '>=3.10.0'
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # Local SQLite & Desktop Storage
+  # Local SQLite & desktop storage
+  # sqflite_common_ffi - BSD-2 - SQLite on desktop via FFI
   sqflite_common: ^2.5.4
   sqflite_common_ffi: ^2.3.3
   path: ^1.9.0
   path_provider: ^2.1.2
 
-  # Security, Cryptography & Hashing
+  # Cryptography - crypto (BSD-3) - SHA-256 for the audit chain
   crypto: ^3.0.3
 
   # Utilities
-  uuid: ^4.3.3
-  intl: ^0.19.0
-  http: ^1.2.0
-  flutter_dotenv: ^5.1.0
-
-  # UI & Design
-  google_fonts: ^6.1.0
-  flutter_animate: ^4.5.0
+  uuid: ^4.3.3          # BSD-3 - record identifiers
+  intl: ^0.19.0         # BSD-3 - date and number formatting
+  http: ^1.2.0          # BSD-3 - Ollama HTTP transport (localhost only)
 
 dev_dependencies:
   flutter_test:
@@ -38,5 +34,36 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
   assets:
+    # Non-secret configuration defaults. The real .env is read from disk next
+    # to the executable, never bundled (see lib/core/config/app_config.dart).
     - .env.example
+    - assets/synthetic/
+
+  # Fonts are bundled rather than fetched at runtime.
+  #
+  # The app previously used the google_fonts package, which downloads font
+  # files over HTTP on first launch. That breaks the offline rule in
+  # docs/Rules.md §16 and silently falls back to system fonts during an
+  # offline demo. These are the same typefaces, shipped in the build.
+  # Inter and Outfit are both SIL Open Font License 1.1 - see assets/fonts/OFL.txt
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-400.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-500.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-600.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-700.ttf
+          weight: 700
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/Outfit-500.ttf
+          weight: 500
+        - asset: assets/fonts/Outfit-600.ttf
+          weight: 600
+        - asset: assets/fonts/Outfit-700.ttf
+          weight: 700

@@ -1,0 +1,12 @@
+The fonts bundled in this directory are licensed under the
+SIL Open Font License, Version 1.1.
+
+  Inter   - Copyright (c) 2016 The Inter Project Authors
+            https://github.com/rsms/inter
+  Outfit  - Copyright (c) 2020 The Outfit Project Authors
+            https://github.com/Outfitio/Outfit-Fonts
+
+Full license text: https://openfontlicense.org/
+
+They are bundled rather than downloaded at runtime so the application makes no
+network request on launch (docs/Rules.md section 16).
