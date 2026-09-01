@@ -1,5 +1,4 @@
 import '../auth/models/investigator.dart';
-import '../graph/models/graph_models.dart';
 import '../models/case_note.dart';
 import '../models/criminal.dart';
 import '../models/media_item.dart';
@@ -344,6 +343,23 @@ class SeedData {
           'between 14:00 and 16:30 hours.',
       createdAt: baseTime + 86400000 * 14,
     ),
+    // Subscriber attribution for the number the rest of the network calls.
+    // Criminals.md asks each snippet to embed extractable entities including
+    // phone numbers; without this the handset that every other subject dials
+    // has no owner, and entity extraction cannot resolve those calls to a
+    // person. Deliberately names one subject only, so attribution is
+    // unambiguous.
+    const TextRecord(
+      id: 'INTEL-2023-0902',
+      criminalId: 'C-001',
+      kind: TextRecordKind.INTEL,
+      title: 'Subscriber Attribution: Pune Handset',
+      body: 'Telecom nodal officer confirmed subscriber attribution for handset '
+          '+91-98100-99001. The connection is registered to Devraj Malhotra at a '
+          'Pune address and has been in continuous use since 2022. Billing is '
+          'settled in cash by a third party.',
+      createdAt: baseTime + 86400000 * 4,
+    ),
   ];
 
   static final List<MediaItem> mediaItems = [
@@ -418,106 +434,6 @@ class SeedData {
       caption: 'Blurry Night Surveillance Frame (Candidate for Enhancement)',
       isSynthetic: true,
       createdAt: baseTime + 86400000 * 14,
-    ),
-  ];
-
-  static final List<Entity> entities = [
-    const Entity(id: 'E-001', type: EntityType.PERSON, value: 'Devraj Malhotra', firstSeenIn: 'C-001'),
-    const Entity(id: 'E-002', type: EntityType.PERSON, value: 'Farhan Qureshi', firstSeenIn: 'C-002'),
-    const Entity(id: 'E-003', type: EntityType.PERSON, value: 'Ravi Deshmukh', firstSeenIn: 'C-003'),
-    const Entity(id: 'E-004', type: EntityType.PERSON, value: 'Sunita Rao', firstSeenIn: 'C-004'),
-    const Entity(id: 'E-005', type: EntityType.PERSON, value: 'Imran Shaikh', firstSeenIn: 'C-005'),
-    const Entity(id: 'E-006', type: EntityType.LOCATION, value: 'Pune', firstSeenIn: 'C-001'),
-    const Entity(id: 'E-007', type: EntityType.LOCATION, value: 'Mumbai', firstSeenIn: 'C-004'),
-    const Entity(id: 'E-008', type: EntityType.LOCATION, value: 'Nashik', firstSeenIn: 'C-003'),
-    const Entity(id: 'E-009', type: EntityType.LOCATION, value: 'Nagpur', firstSeenIn: 'C-002'),
-    const Entity(id: 'E-010', type: EntityType.LOCATION, value: 'Thane', firstSeenIn: 'C-005'),
-    const Entity(id: 'E-011', type: EntityType.PHONE, value: '+91-98200-11223', firstSeenIn: 'FIR-2023-0492'),
-    const Entity(id: 'E-012', type: EntityType.VEHICLE, value: 'MH-12-XX-4901 (White Swift)', firstSeenIn: 'FIR-2023-0492'),
-    const Entity(id: 'E-013', type: EntityType.ORG, value: 'Zenith Impex', firstSeenIn: 'INTEL-2023-0881'),
-  ];
-
-  static final List<Edge> edges = [
-    // C-002 -> C-001 (Calls)
-    const Edge(
-      id: 'EDGE-001',
-      srcEntityId: 'E-002',
-      dstEntityId: 'E-001',
-      relation: RelationType.CALLED,
-      weight: 3,
-      evidenceIds: ['CDR-001', 'CDR-002', 'CDR-003'],
-    ),
-    // C-003 -> C-001 (Calls)
-    const Edge(
-      id: 'EDGE-002',
-      srcEntityId: 'E-003',
-      dstEntityId: 'E-001',
-      relation: RelationType.CALLED,
-      weight: 2,
-      evidenceIds: ['CDR-004', 'CDR-005'],
-    ),
-    // C-005 -> C-001 (Calls)
-    const Edge(
-      id: 'EDGE-003',
-      srcEntityId: 'E-005',
-      dstEntityId: 'E-001',
-      relation: RelationType.CALLED,
-      weight: 1,
-      evidenceIds: ['CDR-006'],
-    ),
-    // C-002 -> C-005 (Calls)
-    const Edge(
-      id: 'EDGE-004',
-      srcEntityId: 'E-002',
-      dstEntityId: 'E-005',
-      relation: RelationType.CALLED,
-      weight: 1,
-      evidenceIds: ['CDR-007'],
-    ),
-    // C-004 -> C-001 (Pays / Hawala Money Flow - Hub Anomaly)
-    const Edge(
-      id: 'EDGE-005',
-      srcEntityId: 'E-004',
-      dstEntityId: 'E-001',
-      relation: RelationType.PAID,
-      weight: 5,
-      evidenceIds: ['TXN-001', 'TXN-002', 'TXN-003', 'TXN-004', 'TXN-005'],
-    ),
-    // C-005 -> C-001 (Cash deposits)
-    const Edge(
-      id: 'EDGE-006',
-      srcEntityId: 'E-005',
-      dstEntityId: 'E-001',
-      relation: RelationType.PAID,
-      weight: 3,
-      evidenceIds: ['TXN-006', 'TXN-007', 'TXN-008'],
-    ),
-    // C-004 -> C-003 (Logistics payments)
-    const Edge(
-      id: 'EDGE-007',
-      srcEntityId: 'E-004',
-      dstEntityId: 'E-003',
-      relation: RelationType.PAID,
-      weight: 1,
-      evidenceIds: ['TXN-009'],
-    ),
-    // C-003 & C-005 Co-occurrence in Nashik
-    const Edge(
-      id: 'EDGE-008',
-      srcEntityId: 'E-003',
-      dstEntityId: 'E-005',
-      relation: RelationType.CO_OCCURRED,
-      weight: 2,
-      evidenceIds: ['SURV-2023-0104'],
-    ),
-    // C-001 & C-004 Co-occurrence in Mumbai BKC
-    const Edge(
-      id: 'EDGE-009',
-      srcEntityId: 'E-001',
-      dstEntityId: 'E-004',
-      relation: RelationType.CO_OCCURRED,
-      weight: 1,
-      evidenceIds: ['INTEL-2023-1205'],
     ),
   ];
 
