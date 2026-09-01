@@ -37,12 +37,16 @@ Platform: **Flutter (Windows desktop)** · Target machine baseline: **8GB RAM, A
 
 ### 2.2 LLM — `llm/`
 - **Runtime: Ollama**, local HTTP server on `localhost:11434`. Flutter talks to it over HTTP.
-- **Model: 3B Q4_K_M** — Llama 3.2 3B (default) or Qwen 2.5 3B. Chosen to fit the 8GB/4GB-VRAM machine; CPU-first.
-- **Swappable interface (`LlmClient`)** — base URL is config. Escape hatch: point at a stronger teammate's machine on the LAN if the 3B underperforms. No code change, no hosted-API rate limits.
-- **GPU:** RX 6500 acceleration via community `ollama-for-amd` + `HSA_OVERRIDE_GFX_VERSION` or Vulkan — **experimental, allowed to fail**, marked 🧑.
+- **Model: `granite4.1:3b`** — IBM Granite 4.1 3B, Apache-2.0, ~2.1 GB. Chosen over Llama 3.2 3B / Qwen 2.5 3B because it is built for RAG grounding *and* native tool-calling, which the assistant action boundary depends on. Tool-calling verified working against this model.
+- **Embeddings: `nomic-embed-text`** — 274 MB, 768 dimensions.
+- **Swappable interface (`LlmClient`)** — base URL is config (`OLLAMA_BASE_URL`). Escape hatch: point at a stronger machine on the LAN. No code change, no hosted-API rate limits. `OllamaClient` is the only implementation that speaks HTTP; nothing outside `llm/` may call a model directly.
+- **Endpoints:** `/api/chat` (with `tools`), `/api/embed` (batched) falling back to `/api/embeddings` on older servers, `/api/tags` for health.
+- **GPU:** the current dev machine has an RTX 3050, so CUDA works without the AMD/ROCm workarounds this plan originally assumed. Measured on it: ~59 s cold (model load), ~4.3 s warm for a short tool-calling prompt.
 
 ### 2.3 RAG — `rag/`
-- On ingest, records + log entries are chunked and embedded into a **local vector store** (e.g. sqlite-vec / a local FAISS-style index) using a small local embedding model.
+- **This is retrieval, not training.** No model is fine-tuned anywhere in the app. Granite stays frozen; records are embedded once and pasted into a prompt at query time.
+- On ingest, records + log entries are chunked and embedded into the **`vector_chunks` table** using `nomic-embed-text`.
+- **Vector search runs in Dart** (`VectorMath.cosineSimilarity`), not sqlite-vec. sqlite-vec would mean loading a platform-specific native extension into `sqflite_common_ffi` and shipping that DLL with the Windows build — a packaging risk for a demo that must run from a zip. The corpus is ~100 chunks, where a linear scan of 768-dim vectors costs well under a millisecond, so an index buys nothing. Swap `VectorMath.rank` for an ANN index behind the same call if the corpus ever reaches thousands of chunks.
 - Query flow: user question → retrieve top-k relevant records/logs → build a grounded prompt (retrieved context + cit­ation IDs) → LLM answers **only** from retrieved context → answer shown with the source record IDs.
 - Refuses / says "not in the database" when retrieval returns nothing relevant (no hallucinated facts).
 
@@ -58,11 +62,12 @@ Platform: **Flutter (Windows desktop)** · Target machine baseline: **8GB RAM, A
 - Config flag to run enhancement on a separate machine if the demo box is tight.
 
 ### 2.6 Graph / Network Analysis — `graph/`
-- **Entity extraction:** NER (spaCy-style, or the local LLM in a structured-extraction prompt) over FIR/intel text → people, locations, vehicles, phones, orgs.
-- **Graph build:** entities = nodes, co-occurrence/CDR/financial links = edges, stored in SQLite and loaded into an in-memory graph (a Dart graph lib or a small Python analysis side-process).
-- **Key individuals:** betweenness / PageRank centrality.
-- **Communities & anomalies:** Louvain/Leiden clustering; simple anomaly rules (unusual edges, transaction bursts).
-- **Visualization:** force-directed graph widget in Flutter; geographic view for location entities.
+- **The graph is derived, never seeded.** `entities` and `edges` are rebuilt from the records on startup. Hand-authored graph constants were removed from `seed_data.dart` — a fixture presented as analysis is worse than no analysis.
+- **Entity extraction:** gazetteer-plus-pattern NER (the "spaCy-style" option) over FIR/intel text → people (names + aliases, matched on word boundaries), phones, vehicle registrations, organisations, locations. Chosen over LLM structured extraction because it is deterministic and still works when Ollama is down; the model is used for the *narrative*, not the topology.
+- **Graph build:** entities = nodes; edges derived from CDR (via phone-ownership resolution), financial transactions (counterparty resolved by name), and co-mentions in text. Every edge carries `evidenceIds` — the record ids that justify it.
+- **Key individuals:** PageRank (primary ranking) + Brandes betweenness, over people only.
+- **Communities & anomalies:** label propagation for communities (chosen over Louvain: a few dozen lines, no modularity bookkeeping, adequate at this scale). Anomaly rules are statistical and id-agnostic — a transaction is an outlier at ≥3× its own payer→payee 25th-percentile baseline, and several outliers inside 14 days are a burst. The 25th percentile rather than the median because when half a pair's transactions *are* the anomaly, the median hides it.
+- **Visualization:** Fruchterman–Reingold force-directed widget, seeded deterministically so the layout is stable across runs.
 
 ### 2.7 Audit Logger — `audit/`
 - **Append-only, hash-chained.** Each entry stores: actor, action, target, timestamp, payload hash, and `prevHash`. `entryHash = H(entry fields + prevHash)`. Any tampering breaks the chain and is detectable.
@@ -79,19 +84,47 @@ Platform: **Flutter (Windows desktop)** · Target machine baseline: **8GB RAM, A
 - It has **no** tool to edit/add/delete records or images. Even if prompted to, it cannot — the capability does not exist in its tool set.
 - All record/image mutation happens only through explicit investigator UI actions, each logged.
 
+### 3.1 How the boundary is enforced in code
+
+Four independent things must all fail for the assistant to mutate a record:
+
+1. **The advertised tool set has one member.** `ActionGuard.exposedTools` is what is sent to the model as its `tools` array. There is no `updateRecord` for it to name.
+2. **Dispatch is allow-listed.** `ActionGuard.dispatch` compares against `caseNoteToolName` and refuses everything else, so a hallucinated tool name fails closed. Refusals are written to the audit chain.
+3. **The guard cannot reach a mutation API.** Its dependency is typed `CaseNoteSink` — an interface with exactly one method. `CrimeRepository.updateCriminal` / `softDeleteCriminal` / `addMedia` / `attachNews` are not on that interface.
+4. **It has no investigator privilege to borrow.** Those mutations require an `InvestigatorContext`; the guard holds only `AssistantContext`, so such a call would not compile.
+
+### 3.2 Actor attribution
+
+`AuditLogger.log` takes an `ActorContext`, not a `LogActor` enum, and reads the actor off the context's runtime type. A caller cannot name itself. `InvestigatorContext` is minted only by `AuthSessionIssuer.issue`, which is the single place investigator privilege is created.
+
 ## 4. Tech Stack
 
 | Layer | Choice | Notes |
 |---|---|---|
 | UI / app | Flutter (Windows desktop) | one codebase, native window |
-| LLM runtime | Ollama (3B Q4, swappable) | local, free, no rate limits |
-| RAG store | SQLite + local vector index (sqlite-vec/FAISS-style) | offline |
-| Embeddings | small local embedding model | offline |
-| Face auth | webcam + ONNX face embedder (ArcFace/FaceNet-style) | custom matcher |
-| OTP email | Plunk transactional email | key in local .env |
-| Image enhance | Real-ESRGAN + GFPGAN/CodeFormer | local, on-demand |
-| Graph/NLP | NER + centrality/community (Dart lib or Python side-process) | — |
-| News | web search API / light fetch | on-demand only |
+| LLM runtime | Ollama · `granite4.1:3b` | local, free, no rate limits, tool-calling |
+| RAG store | SQLite `vector_chunks` + in-Dart cosine | offline, no native extension |
+| Embeddings | `nomic-embed-text` (768-dim) | offline |
+| Face auth | webcam + ONNX face embedder (ArcFace/FaceNet-style) | **not built yet** |
+| OTP email | Plunk transactional email | **not built yet**; key in local `.env` |
+| Image enhance | Real-ESRGAN + GFPGAN/CodeFormer | **not built yet** |
+| Graph/NLP | gazetteer NER + PageRank/betweenness/label-propagation, pure Dart | no Python side-process |
+| News | web search API / light fetch | **not built yet** |
+| Typography | Inter + Outfit bundled in `assets/fonts` | OFL-1.1; **not** the `google_fonts` package, which downloads at runtime |
+
+### 4.1 Runtime dependencies (Rules §18)
+
+| Package | Licence | Purpose |
+|---|---|---|
+| `sqflite_common_ffi` | BSD-2 | SQLite on Windows desktop via FFI |
+| `sqflite_common` | BSD-2 | SQLite API surface |
+| `path` / `path_provider` | BSD-3 | Database file location |
+| `crypto` | BSD-3 | SHA-256 for the audit chain |
+| `uuid` | BSD-3 | Record identifiers |
+| `intl` | BSD-3 | Date and number formatting |
+| `http` | BSD-3 | Ollama transport (localhost by default) |
+
+Removed: `google_fonts` (fetched fonts over HTTP at launch, breaking Rules §16) and `flutter_dotenv` (`.env` is now read from disk beside the executable, which is the right shape for a packaged desktop app and keeps secrets out of the asset bundle). `flutter_animate` was declared but never imported.
 
 ## 5. Performance Budget (8GB machine)
 
