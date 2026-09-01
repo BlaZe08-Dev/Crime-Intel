@@ -1,35 +1,41 @@
 import 'dart:async';
+
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 import '../core/constants/constants.dart';
+import '../core/security/actor_context.dart';
 import '../core/utils/crypto_utils.dart';
-import '../data/db/database_helper.dart';
 import 'models/log_entry.dart';
 
+/// Append-only, hash-chained audit log (`docs/Schema.md` §8).
+///
+/// Two invariants this class exists to hold:
+///
+/// 1. **Append-only.** The public surface is `log` plus reads. There is no
+///    update or delete method, and none may ever be added (`docs/Rules.md` §2).
+/// 2. **Attribution is enforced, not asserted.** [log] takes an [ActorContext]
+///    and reads the actor off its type. Callers cannot name themselves — the
+///    previous signature took a bare `LogActor` enum, which let any caller
+///    claim to be the investigator.
+///
+/// Writes are serialised through [_writeQueue] so that `seq` stays monotonic
+/// and every `prevHash` points at the entry that actually precedes it, even
+/// under concurrent callers.
 class AuditLogger {
-  static final AuditLogger instance = AuditLogger._init();
-  final DatabaseHelper _dbHelper;
-  Database? _overrideDb;
+  final Database _db;
 
-  // Lock to ensure serial execution of log writes
-  final _lock = Completer<void>()..complete();
-  Future<void> _lastLogFuture = Future.value();
+  /// Tail of the write queue. Each `log` call chains onto it, so entries are
+  /// appended one at a time regardless of caller concurrency.
+  Future<void> _writeQueue = Future<void>.value();
 
-  AuditLogger._init({DatabaseHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+  AuditLogger(this._db);
 
-  /// Constructor for testing with an in-memory database
-  AuditLogger.withDatabase(Database db)
-      : _dbHelper = DatabaseHelper.instance,
-        _overrideDb = db;
-
-  Future<Database> get _db async {
-    final overrideDb = _overrideDb;
-    if (overrideDb != null) return overrideDb;
-    return await _dbHelper.database;
-  }
-
-  /// Calculates the cryptographic SHA-256 hash for a log entry following Schema.md §8:
-  /// entryHash = SHA256(seq | actor | action | targetType | targetId | payloadHash | ts | prevHash)
+  /// Computes the entry hash defined in `docs/Schema.md` §8:
+  ///
+  ///     SHA256(seq | actor | action | targetType | targetId | payloadHash | ts | prevHash)
+  ///
+  /// The field order and separator are part of the on-disk format. Changing
+  /// them invalidates every existing chain, so this must not be "tidied".
   static String computeEntryHash({
     required int seq,
     required LogActor actor,
@@ -40,68 +46,73 @@ class AuditLogger {
     required int ts,
     required String prevHash,
   }) {
-    final raw = '$seq|${actor.name}|${action.name}|$targetType|$targetId|$payloadHash|$ts|$prevHash';
+    final raw = '$seq|${actor.name}|${action.name}|$targetType|$targetId|'
+        '$payloadHash|$ts|$prevHash';
     return CryptoUtils.sha256Hash(raw);
   }
 
-  /// Logs an event into the immutable, hash-chained audit log.
-  /// This method is serialized to guarantee monotonic seq and unbroken prevHash pointers.
+  /// Appends an entry to the chain and returns it.
+  ///
+  /// [context] determines the recorded actor. The acting subject's id is folded
+  /// into the payload (and therefore into `payloadHash`) so that *which*
+  /// investigator acted is covered by the chain without altering the §8 hash
+  /// formula.
   Future<LogEntry> log({
-    required LogActor actor,
+    required ActorContext context,
     required LogAction action,
     required String targetType,
     required String targetId,
     Map<String, dynamic>? payload,
-    String? rawPayloadHash,
     int? timestamp,
-  }) async {
+  }) {
     final completer = Completer<LogEntry>();
 
-    // Serialize log entry creation
-    _lastLogFuture = _lastLogFuture.then((_) async {
+    _writeQueue = _writeQueue.then((_) async {
       try {
-        final db = await _db;
         final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
-        final payloadHash = rawPayloadHash ?? CryptoUtils.hashPayload(payload);
 
-        final entry = await db.transaction((txn) async {
-          // Find latest log entry
-          final latestList = await txn.query(
+        // Fold the subject into the hashed payload. Note this is the subject
+        // *id*, never a credential or face embedding (`docs/Rules.md` §15).
+        final effectivePayload = <String, dynamic>{
+          ...?payload,
+          'actorSubjectId': context.subjectId,
+        };
+        final payloadHash = CryptoUtils.hashPayload(effectivePayload);
+
+        final entry = await _db.transaction((txn) async {
+          final latest = await txn.query(
             'log_entries',
             orderBy: 'seq DESC',
             limit: 1,
           );
 
-          int seq = 1;
-          String prevHash = AppConstants.genesisHash;
-
-          if (latestList.isNotEmpty) {
-            final latest = LogEntry.fromMap(latestList.first);
-            seq = latest.seq + 1;
-            prevHash = latest.entryHash;
+          var seq = 1;
+          var prevHash = AppConstants.genesisHash;
+          if (latest.isNotEmpty) {
+            final previous = LogEntry.fromMap(latest.first);
+            seq = previous.seq + 1;
+            prevHash = previous.entryHash;
           }
-
-          final entryHash = computeEntryHash(
-            seq: seq,
-            actor: actor,
-            action: action,
-            targetType: targetType,
-            targetId: targetId,
-            payloadHash: payloadHash,
-            ts: ts,
-            prevHash: prevHash,
-          );
 
           final newEntry = LogEntry(
             seq: seq,
-            actor: actor,
+            actor: context.actor,
             action: action,
             targetType: targetType,
             targetId: targetId,
             payloadHash: payloadHash,
             ts: ts,
             prevHash: prevHash,
-            entryHash: entryHash,
+            entryHash: computeEntryHash(
+              seq: seq,
+              actor: context.actor,
+              action: action,
+              targetType: targetType,
+              targetId: targetId,
+              payloadHash: payloadHash,
+              ts: ts,
+              prevHash: prevHash,
+            ),
           );
 
           await txn.insert('log_entries', newEntry.toMap());
@@ -109,44 +120,53 @@ class AuditLogger {
         });
 
         completer.complete(entry);
-      } catch (e, st) {
-        completer.completeError(e, st);
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
       }
     });
 
     return completer.future;
   }
 
-  /// Fetches all log entries in chronological order
+  /// All entries, oldest first.
   Future<List<LogEntry>> getAllLogs({int? limit, int? offset}) async {
-    final db = await _db;
-    final maps = await db.query(
+    final rows = await _db.query(
       'log_entries',
       orderBy: 'seq ASC',
       limit: limit,
       offset: offset,
     );
-    return maps.map((m) => LogEntry.fromMap(m)).toList();
+    return rows.map(LogEntry.fromMap).toList();
   }
 
-  /// Fetches recent logs
+  /// Most recent entries, newest first.
   Future<List<LogEntry>> getRecentLogs({int limit = 50}) async {
-    final db = await _db;
-    final maps = await db.query(
+    final rows = await _db.query(
       'log_entries',
       orderBy: 'seq DESC',
       limit: limit,
     );
-    return maps.map((m) => LogEntry.fromMap(m)).toList();
+    return rows.map(LogEntry.fromMap).toList();
   }
 
-  /// Gets the total number of log entries
+  /// Entries touching one target, newest first — powers a record's history view.
+  Future<List<LogEntry>> getLogsForTarget(String targetId,
+      {int limit = 100}) async {
+    final rows = await _db.query(
+      'log_entries',
+      where: 'targetId = ?',
+      whereArgs: [targetId],
+      orderBy: 'seq DESC',
+      limit: limit,
+    );
+    return rows.map(LogEntry.fromMap).toList();
+  }
+
+  /// Total number of entries in the chain.
   Future<int> getLogCount() async {
-    final db = await _db;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM log_entries');
-    if (result.isNotEmpty) {
-      return (result.first['count'] as num).toInt();
-    }
-    return 0;
+    final result =
+        await _db.rawQuery('SELECT COUNT(*) AS count FROM log_entries');
+    if (result.isEmpty) return 0;
+    return (result.first['count'] as num?)?.toInt() ?? 0;
   }
 }
