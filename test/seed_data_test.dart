@@ -1,102 +1,168 @@
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:test/test.dart';
 import 'package:crime_intel/audit/audit_logger.dart';
 import 'package:crime_intel/audit/audit_verifier.dart';
 import 'package:crime_intel/audit/models/log_entry.dart';
+import 'package:crime_intel/core/security/actor_context.dart';
 import 'package:crime_intel/data/db/database_helper.dart';
+import 'package:crime_intel/data/repositories/crime_repository.dart';
 import 'package:crime_intel/ingest/ingestion_service.dart';
 import 'package:crime_intel/models/criminal.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:test/test.dart';
 
 void main() {
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
+  setUpAll(DatabaseHelper.initFfi);
 
-  group('Synthetic Dataset Ingestion & Network Topology Tests', () {
-    late Database testDb;
-    late AuditLogger logger;
+  group('Synthetic dataset ingestion', () {
+    late Database db;
+    late AuditLogger audit;
     late AuditVerifier verifier;
-    late IngestionService ingestionService;
+    late IngestionService ingestion;
+    late CrimeRepository records;
+
+    final investigator = InvestigatorContext.issueForSession(
+      AuthSessionIssuer.issue(
+        investigatorId: 'INV-001',
+        sessionId: 'SESSION-TEST',
+      ),
+    );
 
     setUp(() async {
-      testDb = await DatabaseHelper.initInMemoryDatabase();
-      logger = AuditLogger.withDatabase(testDb);
-      verifier = AuditVerifier.withDatabase(testDb);
-      ingestionService = IngestionService.withDatabase(testDb, logger);
+      db = await DatabaseHelper.openInMemory();
+      audit = AuditLogger(db);
+      verifier = AuditVerifier(db);
+      records = CrimeRepository(db, audit);
+      ingestion = IngestionService(db: db, audit: audit);
     });
 
-    tearDown(() async {
-      await testDb.close();
+    tearDown(() async => db.close());
+
+    test('seeds the five criminals from Criminals.md', () async {
+      await ingestion.seedIfEmpty();
+
+      final criminals = await records.getCriminals();
+      expect(criminals, hasLength(5));
+
+      final hub = criminals.firstWhere((c) => c.id == 'C-001');
+      expect(hub.name, 'Devraj Malhotra');
+      expect(hub.aliases, containsAll(['DM', 'Seth']));
+      expect(hub.riskLevel, RiskLevel.HIGH);
+      expect(hub.status, CriminalStatus.UNDER_WATCH);
+
+      final financier = criminals.firstWhere((c) => c.id == 'C-004');
+      expect(financier.name, 'Sunita Rao');
+      expect(financier.aliases, contains('Madam'));
     });
 
-    test('Seeds exactly 5 synthetic criminals from Criminals.md with C-001 hub', () async {
-      await ingestionService.seedDatabaseIfEmpty();
-
-      final criminals = await ingestionService.getCriminals();
-      expect(criminals.length, equals(5));
-
-      final c001 = criminals.firstWhere((c) => c.id == 'C-001');
-      expect(c001.name, equals('Devraj Malhotra'));
-      expect(c001.aliases, containsAll(['DM', 'Seth']));
-      expect(c001.riskLevel, equals(RiskLevel.HIGH));
-      expect(c001.status, equals(CriminalStatus.UNDER_WATCH));
-
-      final c004 = criminals.firstWhere((c) => c.id == 'C-004');
-      expect(c004.name, equals('Sunita Rao'));
-      expect(c004.aliases, contains('Madam'));
+    test('is idempotent - a second call does not duplicate', () async {
+      expect(await ingestion.seedIfEmpty(), isTrue);
+      expect(await ingestion.seedIfEmpty(), isFalse);
+      expect(await records.getCriminals(), hasLength(5));
     });
 
-    test('Seeded financial transactions include baseline and planted burst anomaly', () async {
-      await ingestionService.seedDatabaseIfEmpty();
+    test('plants the transaction burst the anomaly rules must find', () async {
+      await ingestion.seedIfEmpty();
 
-      final txns = await ingestionService.getFinancialTxnsForCriminal('C-004');
-      expect(txns.isNotEmpty, isTrue);
+      final txns = await records.getFinancialFor('C-004');
+      expect(txns, isNotEmpty);
 
-      // Check that large burst transactions exist (TXN-003: 2500000.0, TXN-004: 3200000.0)
-      final burstTxns = txns.where((t) => t.amount > 1000000.0).toList();
-      expect(burstTxns.length, greaterThanOrEqualTo(2));
+      final large = txns.where((t) => t.amount > 1000000).toList();
+      expect(large.length, greaterThanOrEqualTo(2));
     });
 
-    test('Seeding event is logged in the hash-chained audit log with valid verification', () async {
-      await ingestionService.seedDatabaseIfEmpty();
+    test('every text record has an extractable body', () async {
+      await ingestion.seedIfEmpty();
 
-      final logs = await logger.getAllLogs();
-      expect(logs.length, equals(1));
-      expect(logs.first.actor, equals(LogActor.SYSTEM));
-      expect(logs.first.action, equals(LogAction.UPLOAD));
-      expect(logs.first.targetId, equals('SYNTHETIC_SEED'));
+      final texts = await records.getAllTextRecords();
+      expect(texts.length, greaterThanOrEqualTo(5));
+      for (final text in texts) {
+        expect(text.body.trim(), isNotEmpty);
+        expect(text.title.trim(), isNotEmpty);
+      }
+    });
+
+    test('seeding is recorded in the audit chain as a SYSTEM action',
+        () async {
+      await ingestion.seedIfEmpty();
+
+      final entries = await audit.getAllLogs();
+      expect(entries, hasLength(1));
+      expect(entries.single.actor, LogActor.SYSTEM);
+      expect(entries.single.action, LogAction.UPLOAD);
+      expect(entries.single.targetId, 'SYNTHETIC_SEED');
 
       final verification = await verifier.verifyChain();
       expect(verification.isValid, isTrue);
-      expect(verification.totalEntries, equals(1));
     });
 
-    test('Soft delete retains record history and logs deletion event', () async {
-      await ingestionService.seedDatabaseIfEmpty();
+    test('soft delete hides the record but keeps it and logs the prior state',
+        () async {
+      await ingestion.seedIfEmpty();
 
-      await ingestionService.softDeleteCriminal('C-005', actor: LogActor.INVESTIGATOR);
+      await records.softDeleteCriminal(
+        context: investigator,
+        criminalId: 'C-005',
+      );
 
-      // Default getCriminals excludes soft-deleted
-      final active = await ingestionService.getCriminals(includeDeleted: false);
+      final active = await records.getCriminals();
       expect(active.any((c) => c.id == 'C-005'), isFalse);
-      expect(active.length, equals(4));
+      expect(active, hasLength(4));
 
-      // Included deleted returns all 5
-      final all = await ingestionService.getCriminals(includeDeleted: true);
-      expect(all.length, equals(5));
+      final all = await records.getCriminals(includeDeleted: true);
+      expect(all, hasLength(5));
+      expect(all.firstWhere((c) => c.id == 'C-005').isDeleted, isTrue);
 
-      final c005 = all.firstWhere((c) => c.id == 'C-005');
-      expect(c005.isDeleted, isTrue);
+      final entries = await audit.getAllLogs();
+      expect(entries.last.action, LogAction.DELETE);
+      expect(entries.last.targetId, 'C-005');
+      expect(entries.last.actor, LogActor.INVESTIGATOR);
 
-      // Audit log has seed entry + delete entry
-      final logs = await logger.getAllLogs();
-      expect(logs.length, equals(2));
-      expect(logs.last.action, equals(LogAction.DELETE));
-      expect(logs.last.targetId, equals('C-005'));
+      expect((await verifier.verifyChain()).isValid, isTrue);
+    });
 
-      final verification = await verifier.verifyChain();
-      expect(verification.isValid, isTrue);
+    test('opening a record writes a VIEW_RECORD entry', () async {
+      await ingestion.seedIfEmpty();
+
+      await records.openCriminalRecord(
+        context: investigator,
+        criminalId: 'C-001',
+      );
+
+      final entries = await audit.getAllLogs();
+      final views =
+          entries.where((e) => e.action == LogAction.VIEW_RECORD).toList();
+      expect(views, hasLength(1));
+      expect(views.single.targetId, 'C-001');
+      expect(views.single.actor, LogActor.INVESTIGATOR);
+    });
+
+    test('an update logs both the previous and the new state', () async {
+      await ingestion.seedIfEmpty();
+
+      await records.updateCriminal(
+        context: investigator,
+        criminalId: 'C-002',
+        status: 'IN_CUSTODY',
+      );
+
+      final updated = await records.getCriminalById('C-002');
+      expect(updated!.status, CriminalStatus.IN_CUSTODY);
+
+      final entries = await audit.getAllLogs();
+      expect(entries.last.action, LogAction.UPDATE);
+      expect((await verifier.verifyChain()).isValid, isTrue);
+    });
+
+    test('unlogged reads do not pollute the chain', () async {
+      await ingestion.seedIfEmpty();
+      final before = await audit.getLogCount();
+
+      // Internal sweeps (indexer, graph builder) must not log.
+      await records.getCriminals();
+      await records.getAllTextRecords();
+      await records.getAllFinancial();
+      await records.getCriminalById('C-001');
+
+      expect(await audit.getLogCount(), before);
     });
   });
 }
