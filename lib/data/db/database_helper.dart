@@ -1,81 +1,82 @@
-import 'dart:async';
 import 'dart:io';
+
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 import '../../core/constants/constants.dart';
+import '../../core/errors/app_exceptions.dart';
 
+/// Opens and creates the local SQLite database.
+///
+/// Was a singleton holding a static `_database`, which meant a test that
+/// opened an in-memory database could poison the next test through the shared
+/// static. It is now an ordinary class: [open] returns a handle, and whoever
+/// opened it owns it.
 class DatabaseHelper {
-  static final DatabaseHelper instance = DatabaseHelper._init();
-  static Database? _database;
-  static bool _ffiInitialized = false;
+  static bool _ffiReady = false;
 
-  DatabaseHelper._init();
-
-  /// Initialize FFI factory for desktop platforms (Windows, Linux, macOS)
+  /// Installs the FFI factory needed for SQLite on desktop. Idempotent, and
+  /// safe to call from tests before any database is opened.
   static void initFfi() {
-    if (!_ffiInitialized) {
-      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        sqfliteFfiInit();
-        databaseFactory = databaseFactoryFfi;
-      }
-      _ffiInitialized = true;
+    if (_ffiReady) return;
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
     }
+    _ffiReady = true;
   }
 
-  Future<Database> get database async {
-    final db = _database;
-    if (db != null) return db;
-    _database = await _initDB(AppConstants.defaultDatabaseName);
-    return _database!;
-  }
-
-  Future<Database> _initDB(String filePath) async {
+  /// Opens the on-disk database, creating the schema on first run.
+  Future<Database> open({String? fileName}) async {
     initFfi();
 
-    String dbPath;
+    final name = fileName ?? AppConstants.defaultDatabaseName;
+    String path;
     try {
-      final appDir = await getApplicationSupportDirectory();
-      dbPath = join(appDir.path, filePath);
+      final dir = await getApplicationSupportDirectory();
+      path = join(dir.path, name);
     } catch (_) {
-      // Fallback if path_provider fails in non-GUI / test context
-      dbPath = join(Directory.current.path, filePath);
+      // path_provider needs a platform channel, which is absent in plain
+      // Dart tests. Fall back to the working directory.
+      path = join(Directory.current.path, name);
     }
 
-    // Ensure parent directory exists
-    final parentDir = Directory(dirname(dbPath));
-    if (!await parentDir.exists()) {
-      await parentDir.create(recursive: true);
-    }
+    try {
+      final parent = Directory(dirname(path));
+      if (!await parent.exists()) await parent.create(recursive: true);
 
-    return await databaseFactory.openDatabase(
-      dbPath,
-      options: OpenDatabaseOptions(
-        version: 1,
-        onCreate: _createDB,
-        onConfigure: (db) async {
-          await db.execute('PRAGMA foreign_keys = ON');
-        },
-      ),
-    );
+      return await databaseFactory.openDatabase(
+        path,
+        options: OpenDatabaseOptions(
+          version: 1,
+          onCreate: createSchema,
+          onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
+        ),
+      );
+    } catch (error) {
+      throw DataAccessException(
+        'Could not open the case database at $path.',
+        cause: error,
+      );
+    }
   }
 
-  /// Initialize an in-memory database for testing purposes
-  static Future<Database> initInMemoryDatabase() async {
+  /// Opens a throwaway in-memory database with the full schema, for tests.
+  static Future<Database> openInMemory() async {
     initFfi();
-    return await databaseFactory.openDatabase(
+    return databaseFactory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
         version: 1,
-        onCreate: (db, version) async {
-          await DatabaseHelper.instance._createDB(db, version);
-        },
+        onCreate: createSchema,
+        onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       ),
     );
   }
 
-  Future<void> _createDB(Database db, int version) async {
-    // 1. Criminals Table
+  /// Creates every table in `docs/Schema.md`.
+  static Future<void> createSchema(Database db, int version) async {
     await db.execute('''
       CREATE TABLE criminals (
         id TEXT PRIMARY KEY,
@@ -93,7 +94,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 2. Media Items Table
     await db.execute('''
       CREATE TABLE media_items (
         id TEXT PRIMARY KEY,
@@ -108,7 +108,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 3. Structured Records: CDR
     await db.execute('''
       CREATE TABLE cdr_records (
         id TEXT PRIMARY KEY,
@@ -122,7 +121,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 4. Structured Records: Financial Txns
     await db.execute('''
       CREATE TABLE financial_txns (
         id TEXT PRIMARY KEY,
@@ -136,7 +134,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 5. Structured Records: Criminal History
     await db.execute('''
       CREATE TABLE criminal_history (
         id TEXT PRIMARY KEY,
@@ -148,7 +145,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 6. Unstructured Text Records (FIR, Intel)
     await db.execute('''
       CREATE TABLE text_records (
         id TEXT PRIMARY KEY,
@@ -161,7 +157,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 7. Graph Entities
+    // Derived by GraphService from the records above; never hand-authored.
     await db.execute('''
       CREATE TABLE entities (
         id TEXT PRIMARY KEY,
@@ -171,7 +167,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 8. Graph Edges
     await db.execute('''
       CREATE TABLE edges (
         id TEXT PRIMARY KEY,
@@ -185,7 +180,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 9. Case Notes
     await db.execute('''
       CREATE TABLE case_notes (
         id TEXT PRIMARY KEY,
@@ -197,7 +191,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 10. News Attachments
     await db.execute('''
       CREATE TABLE news_attachments (
         id TEXT PRIMARY KEY,
@@ -211,7 +204,8 @@ class DatabaseHelper {
       )
     ''');
 
-    // 11. Immutable Hash-Chained Audit Log
+    // Append-only. There is no UPDATE or DELETE against this table anywhere
+    // in the codebase, and none may be added (`docs/Rules.md` §2).
     await db.execute('''
       CREATE TABLE log_entries (
         seq INTEGER PRIMARY KEY,
@@ -226,7 +220,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 12. Investigators (Local auth)
     await db.execute('''
       CREATE TABLE investigators (
         id TEXT PRIMARY KEY,
@@ -237,7 +230,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 13. RAG Vector Chunks
     await db.execute('''
       CREATE TABLE vector_chunks (
         id TEXT PRIMARY KEY,
@@ -248,20 +240,13 @@ class DatabaseHelper {
       )
     ''');
 
-    // Indexes for fast querying
     await db.execute('CREATE INDEX idx_criminals_status ON criminals (status)');
     await db.execute('CREATE INDEX idx_cdr_criminal ON cdr_records (criminalId)');
-    await db.execute('CREATE INDEX idx_financial_criminal ON financial_txns (criminalId)');
+    await db
+        .execute('CREATE INDEX idx_financial_criminal ON financial_txns (criminalId)');
     await db.execute('CREATE INDEX idx_text_criminal ON text_records (criminalId)');
     await db.execute('CREATE INDEX idx_notes_criminal ON case_notes (criminalId)');
     await db.execute('CREATE INDEX idx_log_seq ON log_entries (seq)');
-  }
-
-  Future<void> close() async {
-    final db = _database;
-    if (db != null) {
-      await db.close();
-      _database = null;
-    }
+    await db.execute('CREATE INDEX idx_vector_source ON vector_chunks (sourceType)');
   }
 }
