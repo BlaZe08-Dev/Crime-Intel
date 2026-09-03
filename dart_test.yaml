@@ -1,0 +1,8 @@
+# The `live` tag marks tests that need a running Ollama server with
+# granite4.1:3b and nomic-embed-text pulled. They are excluded from the
+# default run so `flutter test` stays fast and works without a model server.
+#
+# Run them deliberately:  flutter test --tags live
+tags:
+  live:
+    skip: "needs a live Ollama server - run with: flutter test --tags live"
