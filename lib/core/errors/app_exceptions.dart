@@ -60,6 +60,11 @@ final class DataAccessException extends AppException {
   const DataAccessException(super.message, {super.cause});
 }
 
+/// Authentication or credential verification failed. Safe for display.
+final class AuthException extends AppException {
+  const AuthException(super.message, {super.cause});
+}
+
 /// An assistant action was refused by the ActionGuard.
 ///
 /// Raised when the assistant requests a capability it does not have. The

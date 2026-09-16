@@ -47,6 +47,12 @@ class AssistantReply {
 /// there is no record-mutating call reachable from the assistant's execution
 /// path at all.
 class AssistantService {
+  /// Dedicated, grounded network-analysis request used by the graph screen.
+  /// It delegates to [ask], preserving retrieval, citations and logging.
+  static const networkExplanationQuestion =
+      'Summarize the key individuals, their connections, and any flagged '
+      'anomalies in this network. Cite the supporting record IDs.';
+
   final RagService _rag;
   final LlmClient _llm;
   final ActionGuard _guard;
@@ -155,6 +161,11 @@ class AssistantService {
       rethrow;
     }
   }
+
+  Future<AssistantReply> explainNetwork({
+    required InvestigatorContext context,
+  }) =>
+      ask(context: context, question: networkExplanationQuestion);
 
   /// Handles a turn where the model asked to use its one tool.
   Future<AssistantReply> _runToolTurn({

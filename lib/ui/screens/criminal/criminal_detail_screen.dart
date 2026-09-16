@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -7,6 +10,7 @@ import '../../../models/criminal.dart';
 import '../../../models/media_item.dart';
 import '../../../models/structured_records.dart';
 import '../../../models/text_record.dart';
+import '../../../core/utils/id_generator.dart';
 import '../../theme/app_theme.dart';
 
 /// A single criminal's record (`docs/AppFlow.md` §4).
@@ -77,6 +81,63 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     });
   }
 
+  Future<void> _uploadMedia() async {
+    const imageTypes = XTypeGroup(
+      label: 'Images',
+      extensions: ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    final file = await openFile(acceptedTypeGroups: [imageTypes]);
+    if (file == null || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add media to this record?'),
+        content: Text(
+          'The selected file will be registered against ${widget.criminalId} '
+          'and logged in the immutable audit trail. Only synthetic media may '
+          'be added to CrimeIntel.\n\n${file.name}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Confirm synthetic upload'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await widget.services.records.addMedia(
+        context: widget.services.session,
+        item: MediaItem(
+          id: IdGenerator.generate('MEDIA'),
+          criminalId: widget.criminalId,
+          type: MediaType.PHOTO,
+          filePath: file.path,
+          caption: 'Investigator upload: ${file.name}',
+          isSynthetic: true,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Media uploaded and added to the audit log.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not upload media: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final criminal = _criminal;
@@ -99,12 +160,12 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                   children: [
                     _profile(criminal),
                     const SizedBox(height: 22),
+                    _mediaHeader(),
+                    const SizedBox(height: 10),
                     if (_media.isNotEmpty) ...[
-                      _section('Media', Icons.image_outlined),
-                      const SizedBox(height: 10),
                       _mediaStrip(),
-                      const SizedBox(height: 22),
                     ],
+                    const SizedBox(height: 22),
                     if (_texts.isNotEmpty) ...[
                       _section('Reports & Intelligence',
                           Icons.description_outlined),
@@ -149,6 +210,17 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           Icon(icon, size: 18, color: AppColors.primary),
           const SizedBox(width: 8),
           Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ],
+      );
+
+  Widget _mediaHeader() => Row(
+        children: [
+          Expanded(child: _section('Media', Icons.image_outlined)),
+          OutlinedButton.icon(
+            onPressed: _uploadMedia,
+            icon: const Icon(Icons.upload_file_outlined, size: 17),
+            label: const Text('Upload media'),
+          ),
         ],
       );
 
@@ -222,22 +294,21 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    item.filePath,
-                    width: 130,
-                    height: 130,
-                    fit: BoxFit.cover,
-                    // Media may be absent until teammates supply real
-                    // synthetic images; show why rather than a red X.
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 130,
-                      height: 130,
-                      color: AppColors.surfaceElevated,
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.image_not_supported_outlined,
-                          color: AppColors.textMuted),
-                    ),
-                  ),
+                  child: item.filePath.startsWith('assets/')
+                      ? Image.asset(
+                          item.filePath,
+                          width: 130,
+                          height: 130,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _missingMedia(),
+                        )
+                      : Image.file(
+                          File(item.filePath),
+                          width: 130,
+                          height: 130,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _missingMedia(),
+                        ),
                 ),
                 const SizedBox(height: 5),
                 SizedBox(
@@ -252,6 +323,15 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
             );
           },
         ),
+      );
+
+  Widget _missingMedia() => Container(
+        width: 130,
+        height: 130,
+        color: AppColors.surfaceElevated,
+        alignment: Alignment.center,
+        child: const Icon(Icons.image_not_supported_outlined,
+            color: AppColors.textMuted),
       );
 
   Widget _textRecord(TextRecord record) => _card(

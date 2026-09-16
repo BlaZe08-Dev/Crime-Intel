@@ -1,6 +1,6 @@
 # CrimeIntel — Tracker
 
-**Owner:** Team (single builder identity) · **Deadline:** 12 Sep
+**Owner:** Team (single builder identity) · **Deadline:** 20 Sep 2026
 **Status:** ☐ todo · ◐ in progress · ☑ done · ⚠ at-risk
 **Who:** 🤖 AI-assisted · 🧑 human-only
 
@@ -47,18 +47,22 @@
 ## Phase 2 — Auth
 | # | Task | Who | Status |
 |---|---|---|---|
-| 2.1 | Email OTP via Plunk (send/verify), key in .env | 🤖 | ☐ |
-| 2.2 | Face capture + embedder + enroll/match | 🤖 | ☐ |
-| 2.3 | ⚠ Test face match on real webcam; tune threshold | 🧑 | ☐ |
-| 2.4 | Gate app behind auth; log all attempts | 🤖 | ☐ |
+| 2.1 | Email OTP via Plunk (send/verify), key in .env | 🤖 | ◐ |
+| 2.2 | Face capture + embedder + enroll/match (descoped) | 🤖 | ☐ |
+| 2.3 | ⚠ Test face match on real webcam; tune threshold (descoped) | 🧑 | ☐ |
+| 2.4 | Gate app behind auth; log all attempts | 🤖 | ◐ |
 
-- Not started. The app currently runs as the seeded investigator and
-  **deliberately does not write a `LOGIN_OK` entry**, because nobody logged in.
-  Startup records a `SYSTEM` entry saying the session was unauthenticated, so
-  the gap is visible in the audit trail rather than hidden by it.
-- The seam is in place: `AuthSessionIssuer.issue` is the single mint point for
-  investigator privilege. Wiring auth means calling it after a successful match
-  instead of at boot.
+- A registration/login gate is implemented in source: email → Plunk 6-digit,
+  one-minute OTP → mandatory strong-password creation; later sessions require
+  the stored salted, iterated password hash. `AuthSessionIssuer.issue` remains
+  the single mint point and logs `LOGIN_OK` only after successful sign-in.
+- `OTP_SENT`, `OTP_OK`, and `LOGIN_FAIL` are audit logged. The developer-owned
+  Plunk key and verified sender address are local `.env` settings only.
+- This remains ◐ because Flutter cannot run in this workspace and a real Plunk
+  account plus Windows end-to-end test are still required: **code complete,
+  pending verification on real Windows machine.**
+- Face recognition is descoped for the hackathon deadline. OTP-only login is
+  the intended auth path; the face seam remains documented future work.
 
 ## Phase 3 — Pages, actions, logging
 | # | Task | Who | Status |
@@ -73,7 +77,8 @@
   not exist yet (Phase 5).
 - 3.2 — `VIEW_RECORD`, `UPDATE` and `DELETE` (soft, prior state hashed into the
   chain) are wired and tested. Media **upload has a repository method and audit
-  entry but no UI**, so an investigator cannot yet upload from the app.
+  entry plus a new file-picker UI and integration-style test in source. It is
+  still ◐: **code complete, pending verification on real Windows machine.**
 
 ## Phase 4 — Network / graph (PS12 core)
 | # | Task | Who | Status |
@@ -82,7 +87,7 @@
 | 4.2 | Graph build + force-directed viz | 🤖 | ☑ |
 | 4.3 | Centrality (key individuals) | 🤖 | ☑ |
 | 4.4 | Community detection + anomaly flags | 🤖 | ☑ |
-| 4.5 | "Explain this network" narrative | 🤖 | ☐ |
+| 4.5 | "Explain this network" narrative | 🤖 | ◐ |
 
 - The graph is **derived**, not seeded. The hand-authored `entities` and
   `edges` constants were deleted from `seed_data.dart`; `GraphService` now
@@ -92,18 +97,23 @@
   proves it moves to a different subject when the data changes.
 - 4.4 — Label propagation for communities; the C-004→C-001 burst is found by a
   percentile-baseline outlier rule that has no knowledge of those ids.
-- 4.5 — Not built. The chat can answer graph questions from indexed records,
-  but there is no dedicated "explain this network" action.
+- 4.5 — A dedicated graph-screen action now routes its canned request through
+  `AssistantService`/RAG and renders source IDs. It has test coverage in
+  source but has not yet been executable-tested in this workspace because the
+  installed Flutter Snap cannot run here; **code complete, pending verification
+  on real Windows machine.**
 
 ## Phase 5 — News + enhancement
 | # | Task | Who | Status |
 |---|---|---|---|
-| 5.1 | News search + attach-to-page (logged) | 🤖 | ☐ |
-| 5.2 | Real-ESRGAN + GFPGAN local enhancement + label | 🤖 | ☐ |
+| 5.1 | News search + attach-to-page (logged, descoped) | 🤖 | ☐ |
+| 5.2 | Real-ESRGAN + GFPGAN local enhancement + label (descoped) | 🤖 | ☐ |
 | 5.3 | ⚠ Verify 8GB budget; offload to LAN if needed | 🧑 | ☐ |
 
 - Neither built. `ATTACH_NEWS` has a repository method and audit entry ready;
   `ENHANCE_IMAGE` has neither, only the disclaimer constant.
+- News search and image enhancement are descoped for the hackathon deadline;
+  their existing documented seams are deliberately retained as future work.
 - 5.3 — The target machine is now 16 GB, not 8 GB, so the contention risk the
   plan was written around is much reduced.
 
@@ -129,7 +139,7 @@
 | `UPDATE` | ☑ | `CrimeRepository.updateCriminal` |
 | `LLM_QUERY` | ☑ | `AssistantService`, plus ActionGuard refusals |
 | `ATTACH_NEWS` | ◐ | repository method ready; no news feature to call it |
-| `LOGIN_OK` / `LOGIN_FAIL` / `OTP_SENT` / `OTP_OK` | ☐ | needs Phase 2 auth |
+| `LOGIN_OK` / `LOGIN_FAIL` / `OTP_SENT` / `OTP_OK` | ◐ | auth flow in source; awaiting executable tests |
 | `ENHANCE_IMAGE` | ☐ | needs Phase 5 enhancement |
 
 The four unwired actions have no feature behind them yet. Emitting them now

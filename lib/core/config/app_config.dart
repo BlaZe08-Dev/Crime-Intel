@@ -137,6 +137,8 @@ abstract final class AppConfig {
 
   static bool get isPlunkConfigured => plunkApiKey.isNotEmpty;
 
+  static String get plunkFromEmail => _read('PLUNK_FROM_EMAIL', '');
+
   /// Non-secret summary for diagnostics. Never includes key material.
   static Map<String, String> describe() => {
         'configSource': _source,

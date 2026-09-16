@@ -1,6 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../assistant/action_guard.dart';
+import '../../auth/auth_service.dart';
 import '../../assistant/assistant_service.dart';
 import '../../audit/audit_logger.dart';
 import '../../audit/audit_verifier.dart';
@@ -40,20 +41,11 @@ class AppServices {
   final ActionGuard guard;
   final AssistantService assistant;
   final GraphService graph;
+  final AuthService auth;
 
-  /// The acting investigator.
-  ///
-  /// **Auth is not implemented yet** (Tracker Phase 2). Until face match and
-  /// the OTP fallback land, the app runs as the seeded investigator and this
-  /// context is minted at startup without a credential check. It is minted
-  /// through the same [AuthSessionIssuer] the real flow will use, so wiring
-  /// auth in later means calling [AuthSessionIssuer.issue] after a successful
-  /// match instead of at boot — no other code changes.
-  ///
-  /// Startup deliberately does **not** write a `LOGIN_OK` entry: nobody logged
-  /// in, and a log that says otherwise would be a lie in the one place the
-  /// product promises not to lie.
-  final InvestigatorContext session;
+  /// The acting investigator, minted only after [completeLogin] receives a
+  /// verified local account identity. It is never available on the login UI.
+  late InvestigatorContext session;
 
   AppServices._({
     required this.db,
@@ -69,7 +61,7 @@ class AppServices {
     required this.guard,
     required this.assistant,
     required this.graph,
-    required this.session,
+    required this.auth,
   });
 
   /// Builds the whole object graph.
@@ -115,12 +107,7 @@ class AppServices {
         audit: audit,
       ),
       graph: GraphService(records: records, graph: graphStore),
-      session: InvestigatorContext.issueForSession(
-        AuthSessionIssuer.issue(
-          investigatorId: 'INV-001',
-          sessionId: 'SESSION-${DateTime.now().millisecondsSinceEpoch}',
-        ),
-      ),
+      auth: AuthService(db: db, audit: audit),
     );
   }
 
@@ -136,24 +123,18 @@ class AppServices {
     await graph.rebuild();
   }
 
-  /// Records that this session began without authentication, so the gap is
-  /// visible in the audit trail rather than implied by its absence.
-  Future<void> logUnauthenticatedStart() {
-    return audit.log(
-      context: const SystemContext(),
-      action: LogAction.UPLOAD,
-      targetType: 'Session',
-      targetId: session.sessionId,
-      payload: {
-        'note': 'Session started without authentication - auth not yet '
-            'implemented (Tracker Phase 2).',
-        'investigatorId': session.investigatorId,
-      },
-    );
+  Future<void> completeLogin(String userId) async {
+    session = InvestigatorContext.issueForSession(AuthSessionIssuer.issue(
+      investigatorId: userId,
+      sessionId: 'SESSION-${DateTime.now().millisecondsSinceEpoch}',
+    ));
+    await audit.log(context: session, action: LogAction.LOGIN_OK,
+        targetType: 'Account', targetId: userId, payload: {'sessionId': session.sessionId});
   }
 
   Future<void> dispose() async {
     llm.dispose();
+    auth.dispose();
     await db.close();
   }
 }

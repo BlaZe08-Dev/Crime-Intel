@@ -49,8 +49,9 @@ class DatabaseHelper {
       return await databaseFactory.openDatabase(
         path,
         options: OpenDatabaseOptions(
-          version: 1,
+          version: 2,
           onCreate: createSchema,
+          onUpgrade: _upgradeSchema,
           onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
         ),
       );
@@ -68,8 +69,9 @@ class DatabaseHelper {
     return databaseFactory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onCreate: createSchema,
+        onUpgrade: _upgradeSchema,
         onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       ),
     );
@@ -230,6 +232,8 @@ class DatabaseHelper {
       )
     ''');
 
+    await _createAuthTables(db);
+
     await db.execute('''
       CREATE TABLE vector_chunks (
         id TEXT PRIMARY KEY,
@@ -248,5 +252,22 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_notes_criminal ON case_notes (criminalId)');
     await db.execute('CREATE INDEX idx_log_seq ON log_entries (seq)');
     await db.execute('CREATE INDEX idx_vector_source ON vector_chunks (sourceType)');
+  }
+
+  static Future<void> _upgradeSchema(
+      Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) await _createAuthTables(db);
+  }
+
+  static Future<void> _createAuthTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_users (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        passwordHash TEXT NOT NULL,
+        passwordSalt TEXT NOT NULL,
+        createdAt INTEGER NOT NULL
+      )
+    ''');
   }
 }

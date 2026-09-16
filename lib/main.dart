@@ -4,6 +4,7 @@ import 'core/constants/constants.dart';
 import 'core/di/app_services.dart';
 import 'data/db/database_helper.dart';
 import 'ui/screens/home/home_shell.dart';
+import 'ui/screens/auth/login_screen.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/widgets/startup_failure_view.dart';
 
@@ -36,7 +37,6 @@ class _CrimeIntelAppState extends State<CrimeIntelApp> {
   Future<AppServices> _bootstrap() async {
     final services = await AppServices.bootstrap();
     await services.prepareData();
-    await services.logUnauthenticatedStart();
     return services;
   }
 
@@ -60,10 +60,7 @@ class _CrimeIntelAppState extends State<CrimeIntelApp> {
               onRetry: _retry,
             );
           }
-          return ServicesScope(
-            services: snapshot.data!,
-            child: const HomeShell(),
-          );
+          return LoginScreen(services: snapshot.data!);
         },
       ),
     );
