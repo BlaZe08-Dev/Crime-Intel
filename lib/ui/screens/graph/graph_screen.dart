@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 
+import '../../../assistant/assistant_service.dart';
+import '../../../core/errors/app_exceptions.dart';
 import '../../../graph/graph_analytics.dart';
 import '../../../graph/graph_service.dart';
 import '../../../graph/models/graph_models.dart';
@@ -28,6 +30,9 @@ class _GraphScreenState extends State<GraphScreen>
   Size _canvas = Size.zero;
   String? _selectedId;
   bool _loading = true;
+  bool _explaining = false;
+  AssistantReply? _explanation;
+  String? _explanationError;
 
   static const _communityColors = [
     AppColors.primary,
@@ -60,6 +65,26 @@ class _GraphScreenState extends State<GraphScreen>
       _loading = false;
     });
     _startLayout();
+  }
+
+  Future<void> _explainNetwork() async {
+    final services = ServicesScope.of(context);
+    setState(() {
+      _explaining = true;
+      _explanationError = null;
+    });
+    try {
+      final reply = await services.assistant.explainNetwork(
+        context: services.session,
+      );
+      if (!mounted) return;
+      setState(() => _explanation = reply);
+    } on AppException catch (error) {
+      if (!mounted) return;
+      setState(() => _explanationError = error.message);
+    } finally {
+      if (mounted) setState(() => _explaining = false);
+    }
   }
 
   void _startLayout() {
@@ -161,6 +186,27 @@ class _GraphScreenState extends State<GraphScreen>
           style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
         const SizedBox(height: 18),
+        FilledButton.icon(
+          onPressed: _explaining ? null : _explainNetwork,
+          icon: _explaining
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.auto_awesome_outlined, size: 17),
+          label: Text(_explaining ? 'Generating narrative...' : 'Explain this network'),
+        ),
+        if (_explanationError != null) ...[
+          const SizedBox(height: 10),
+          Text(_explanationError!,
+              style: const TextStyle(fontSize: 12, color: AppColors.accentRose)),
+        ],
+        if (_explanation != null) ...[
+          const SizedBox(height: 12),
+          _buildExplanation(_explanation!),
+        ],
+        const SizedBox(height: 20),
 
         _sectionLabel('KEY INDIVIDUALS (PAGERANK)'),
         const SizedBox(height: 8),
@@ -193,6 +239,41 @@ class _GraphScreenState extends State<GraphScreen>
           fontWeight: FontWeight.w700,
           letterSpacing: 1,
           color: AppColors.textMuted,
+        ),
+      );
+
+  Widget _buildExplanation(AssistantReply reply) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+              color: AppColors.accentPurple.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('GROUNDED NARRATIVE',
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
+                    color: AppColors.accentPurple)),
+            const SizedBox(height: 8),
+            SelectableText(reply.answer,
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textPrimary,
+                    height: 1.45)),
+            if (reply.sources.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Sources: ${reply.sources.map((source) => source.sourceId).join(', ')}',
+                style: AppTheme.mono.copyWith(
+                    fontSize: 10, color: AppColors.primary),
+              ),
+            ],
+          ],
         ),
       );
 

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:crime_intel/audit/audit_logger.dart';
 import 'package:crime_intel/audit/audit_verifier.dart';
 import 'package:crime_intel/audit/models/log_entry.dart';
@@ -5,7 +7,9 @@ import 'package:crime_intel/core/security/actor_context.dart';
 import 'package:crime_intel/data/db/database_helper.dart';
 import 'package:crime_intel/data/repositories/crime_repository.dart';
 import 'package:crime_intel/ingest/ingestion_service.dart';
+import 'package:crime_intel/ingest/seed_data.dart';
 import 'package:crime_intel/models/criminal.dart';
+import 'package:crime_intel/models/media_item.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
@@ -133,6 +137,37 @@ void main() {
       expect(views, hasLength(1));
       expect(views.single.targetId, 'C-001');
       expect(views.single.actor, LogActor.INVESTIGATOR);
+    });
+
+    test('an investigator media upload is stored and hash-chain logged',
+        () async {
+      await ingestion.seedIfEmpty();
+
+      final upload = MediaItem(
+        id: 'MEDIA-TEST-UPLOAD',
+        criminalId: 'C-001',
+        type: MediaType.PHOTO,
+        filePath: 'C:/synthetic/test-image.png',
+        caption: 'Synthetic test upload',
+        isSynthetic: true,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await records.addMedia(context: investigator, item: upload);
+
+      expect((await records.getMediaFor('C-001')).map((item) => item.id),
+          contains(upload.id));
+      final entries = await audit.getAllLogs();
+      expect(entries.last.action, LogAction.UPLOAD);
+      expect(entries.last.targetId, upload.id);
+      expect(entries.last.actor, LogActor.INVESTIGATOR);
+      expect((await verifier.verifyChain()).isValid, isTrue);
+    });
+
+    test('every seeded media path resolves to a tracked asset', () {
+      for (final media in SeedData.mediaItems) {
+        expect(File(media.filePath).existsSync(), isTrue,
+            reason: '${media.id} should resolve to a bundled synthetic asset');
+      }
     });
 
     test('an update logs both the previous and the new state', () async {

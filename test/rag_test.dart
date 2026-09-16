@@ -282,5 +282,25 @@ void main() {
       expect(queries, isNotEmpty);
       expect(queries.last.actor, LogActor.INVESTIGATOR);
     });
+
+    test('network explanation uses the normal grounded and logged RAG path',
+        () async {
+      await buildIndex();
+      final assistant = AssistantService(
+        rag: RagService(vectors: vectors, llm: llm),
+        llm: llm,
+        guard: ActionGuard(caseNotes: records, audit: audit),
+        audit: audit,
+      );
+
+      final reply = await assistant.explainNetwork(context: investigator);
+
+      expect(reply.grounded, isTrue);
+      expect(reply.sources, isNotEmpty);
+      expect(llm.receivedMessages.last
+          .firstWhere((message) => message.role.name == 'user')
+          .content, contains(AssistantService.networkExplanationQuestion));
+      expect((await audit.getAllLogs()).last.action, LogAction.LLM_QUERY);
+    });
   });
 }
