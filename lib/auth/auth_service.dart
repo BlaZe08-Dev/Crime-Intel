@@ -80,14 +80,16 @@ class AuthService {
     _validatePassword(password);
     final salt = base64UrlEncode(List<int>.generate(16, (_) => Random.secure().nextInt(256)));
     try {
+      // Record OTP success before creating the account. If audit logging fails,
+      // no credential is persisted, preserving the all-actions-are-logged rule.
+      await _audit.log(context: const SystemContext(), action: LogAction.OTP_OK,
+          targetType: 'Registration', targetId: email, payload: {'email': email});
       await _db.insert('app_users', {
         'id': IdGenerator.generate('USER'), 'email': email,
         'passwordSalt': salt, 'passwordHash': _derive(password, salt),
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       });
       _pending.remove(email);
-      await _audit.log(context: const SystemContext(), action: LogAction.OTP_OK,
-          targetType: 'Registration', targetId: email, payload: {'email': email});
     } catch (error) {
       throw AuthException('Could not create the account. Please try again.', cause: error);
     }
