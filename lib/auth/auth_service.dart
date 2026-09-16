@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
@@ -122,8 +123,10 @@ class AuthService {
   }
 
   String _derive(String password, String salt) {
-    var bytes = utf8.encode('$salt:$password');
-    for (var i = 0; i < _iterations; i++) bytes = sha256.convert(bytes).bytes;
+    var bytes = Uint8List.fromList(utf8.encode('$salt:$password'));
+    for (var i = 0; i < _iterations; i++) {
+      bytes = Uint8List.fromList(sha256.convert(bytes).bytes);
+    }
     return base64UrlEncode(bytes);
   }
 
