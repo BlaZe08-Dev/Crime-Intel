@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'core/constants/constants.dart';
 import 'core/di/app_services.dart';
 import 'data/db/database_helper.dart';
-import 'ui/screens/home/home_shell.dart';
 import 'ui/screens/auth/login_screen.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/widgets/startup_failure_view.dart';
