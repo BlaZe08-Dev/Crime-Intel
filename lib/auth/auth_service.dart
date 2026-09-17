@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -44,8 +45,9 @@ class AuthService {
     }
     final code = _otpGenerator();
     _pending[email] = _PendingOtp(code, DateTime.now().add(otpExpiry));
+    http.Response? response;
     try {
-      final response = await _http.post(
+      response = await _http.post(
         Uri.parse('https://next-api.useplunk.com/v1/send'),
         headers: {'Authorization': 'Bearer ${AppConfig.plunkApiKey}', 'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -63,7 +65,13 @@ class AuthService {
       }
       await _audit.log(context: const SystemContext(), action: LogAction.OTP_SENT,
           targetType: 'Registration', targetId: email, payload: {'email': email, 'expiresInSeconds': 60});
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Plunk OTP send failed: $error\n'
+        'HTTP status: ${response?.statusCode ?? 'no response'}\n'
+        'HTTP response body: ${response?.body ?? 'no response body'}\n'
+        '$stackTrace',
+      );
       if (error is AuthException) rethrow;
       _pending.remove(email);
       throw AuthException('Could not send the verification code. Check your connection and try again.', cause: error);
