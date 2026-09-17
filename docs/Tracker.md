@@ -13,17 +13,20 @@
 ## Phase 0 — Foundation
 | # | Task | Who | Status |
 |---|---|---|---|
-| 0.1 | Scaffold Flutter Windows project + modules | 🤖 | ☑ |
+| 0.1 | Scaffold Flutter Linux project + modules | 🤖 | ☑ |
 | 0.2 | SQLite + data models + synthetic ingestion | 🤖 | ☑ |
 | 0.3 | Hash-chained AuditLogger | 🤖 | ☑ |
-| 0.4 | ⚠ `flutter build windows` runs on real machine | 🧑 | ☐ |
+| 0.4 | Linux desktop debug build and launch verification | 🤖 | ☑ |
 
-- 0.1 — `windows/` runner generated; `flutter analyze` and `flutter test` run
+- 0.1 — `windows/` and `linux/` runners generated; `flutter analyze` and `flutter test` run
   clean. Modules now match TechSpec §2: `llm/`, `rag/`, `graph/`, `assistant/`,
   `data/repositories/` all contain working code, not just models.
-- 0.4 — **Blocked on Visual Studio.** Windows Flutter builds need the MSVC
-  toolchain ("Desktop development with C++"), which is not installed. Nothing
-  else can proceed to a launched app until it is.
+- 0.4 — **Verified 2026-09-16 on Linux:** GTK development headers, Clang,
+  CMake, Ninja and pkg-config are installed; `flutter analyze` reported no
+  issues; `flutter test` passed **57** tests (one `live` Ollama test skipped);
+  and `flutter run -d linux` built `build/linux/x64/debug/bundle/crime_intel`,
+  launched it, and exposed a local Dart VM service. This is a debug launch,
+  not a signed/package-release validation.
 
 ## Phase 1 — LLM + RAG core ⭐
 | # | Task | Who | Status |
@@ -47,20 +50,22 @@
 ## Phase 2 — Auth
 | # | Task | Who | Status |
 |---|---|---|---|
-| 2.1 | Email OTP via Plunk (send/verify), key in .env | 🤖 | ◐ |
+| 2.1 | Email OTP via Resend (send/verify), key in .env | 🤖 | ◐ |
 | 2.2 | Face capture + embedder + enroll/match (descoped) | 🤖 | ☐ |
 | 2.3 | ⚠ Test face match on real webcam; tune threshold (descoped) | 🧑 | ☐ |
 | 2.4 | Gate app behind auth; log all attempts | 🤖 | ◐ |
 
-- A registration/login gate is implemented in source: email → Plunk 6-digit,
+- A registration/login gate is implemented in source: email → Resend 6-digit,
   one-minute OTP → mandatory strong-password creation; later sessions require
   the stored salted, iterated password hash. `AuthSessionIssuer.issue` remains
   the single mint point and logs `LOGIN_OK` only after successful sign-in.
 - `OTP_SENT`, `OTP_OK`, and `LOGIN_FAIL` are audit logged. The developer-owned
-  Plunk key and verified sender address are local `.env` settings only.
-- This remains ◐ because Flutter cannot run in this workspace and a real Plunk
-  account plus Windows end-to-end test are still required: **code complete,
-  pending verification on real Windows machine.**
+  `RESEND_API_KEY` is a local `.env` setting only. Resend's test sender can
+  deliver to the Resend account owner's address without a verified domain.
+- This remains ◐ until a real Resend-key delivery check is performed. On any
+  delivery failure, or with `DEMO_MODE=true`, the UI shows the code and logs
+  `demo fallback, not emailed`. The app itself has launched on
+  Linux; the auth flow is covered by the automated test suite.
 - Face recognition is descoped for the hackathon deadline. OTP-only login is
   the intended auth path; the face seam remains documented future work.
 
@@ -78,7 +83,7 @@
 - 3.2 — `VIEW_RECORD`, `UPDATE` and `DELETE` (soft, prior state hashed into the
   chain) are wired and tested. Media **upload has a repository method and audit
   entry plus a new file-picker UI and integration-style test in source. It is
-  still ◐: **code complete, pending verification on real Windows machine.**
+  still ◐: **code complete, pending verification on the target Linux machine.**
 
 ## Phase 4 — Network / graph (PS12 core)
 | # | Task | Who | Status |
@@ -99,9 +104,9 @@
   percentile-baseline outlier rule that has no knowledge of those ids.
 - 4.5 — A dedicated graph-screen action now routes its canned request through
   `AssistantService`/RAG and renders source IDs. It has test coverage in
-  source but has not yet been executable-tested in this workspace because the
-  installed Flutter Snap cannot run here; **code complete, pending verification
-  on real Windows machine.**
+  source has executable Linux desktop coverage through the verified app launch;
+  its live Ollama response remains unverified because no Ollama server was
+  configured for this run.
 
 ## Phase 5 — News + enhancement
 | # | Task | Who | Status |
@@ -123,7 +128,7 @@
 | 6.1 | ⚠ Full end-to-end run on real machine | 🧑 | ☐ |
 | 6.2 | "Verify logs" chain-integrity button | 🤖 | ☑ |
 | 6.3 | Polish + demo script + write-up (blind-safe) | 🤖 | ☐ |
-| 6.4 | `flutter build windows` → package + setup steps | 🤖 | ☐ |
+| 6.4 | `flutter build linux` → package + setup steps | 🤖 | ☐ |
 | 6.5 | Final demo dry-run | 🧑 | ☐ |
 
 ---
@@ -148,7 +153,8 @@ would mean logging events that never happened, which is worse than the gap.
 ## Milestones
 - **M1 (Day 2):** ☑ synthetic data loads; chain verifies.
 - **M2 (Day 5):** ⭐ ◐ grounded chat is built and unit-tested against a fake
-  model; **not yet seen running against Granite in the app** (blocked by 0.4).
+  model; **not yet seen running against Granite in the app** because no live
+  Ollama server was configured for the verified Linux launch.
 - **M3 (Day 6):** ☐ face + OTP login.
 - **M4 (Day 8):** ◐ assistant boundary complete and tested; logging covers
   everything that has a feature.
@@ -158,7 +164,7 @@ would mean logging events that never happened, which is worse than the gap.
 ## Blockers log
 | Date | Blocker | Resolution |
 |---|---|---|
-| 2026-09-01 | Visual Studio with "Desktop development with C++" not installed; `flutter run/build -d windows` cannot compile | 🧑 Owner installing VS 2022 Community with that workload |
+| 2026-09-16 | Snap launcher could not run in the sandbox | Resolved for verification by invoking the installed Flutter SDK directly; Linux runner verification recorded in Phase 0 |
 | 2026-09-01 | `google_fonts` fetched fonts over HTTP at launch, breaking Rules §16 | Resolved: Inter + Outfit bundled in `assets/fonts`, package removed |
 | 2026-09-01 | Graph, hub badge and entity counts were hand-authored constants presented as analysis | Resolved: derived by `GraphService`; seed constants deleted |
 

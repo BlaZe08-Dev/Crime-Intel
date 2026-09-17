@@ -34,7 +34,7 @@ Grouped by role, with how each is used. Verify licenses at integration time (Rul
 
 | Tool | Role | Notes |
 |---|---|---|
-| [Plunk](https://www.useplunk.com/) (open-source email) | OTP delivery | Transactional email API; key in local `.env`. OTP = **email**, not SMS. |
+| [Resend](https://resend.com/) | OTP delivery | Transactional email API; `RESEND_API_KEY` in local `.env`. OTP = **email**, not SMS. |
 
 ## Image Enhancement (local, offline)
 

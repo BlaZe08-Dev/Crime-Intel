@@ -15,7 +15,7 @@ Face login screen → webcam capture
   └─ no match / no camera → "Use email OTP"
                               │
                               ▼
-                        Generate 6-digit code → Plunk sends email
+                        Generate 6-digit code → Resend sends email
                               │
                               ▼
                         Investigator enters code → verify → ✅ authenticated

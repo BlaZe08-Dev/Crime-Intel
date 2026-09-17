@@ -6,17 +6,17 @@
 ---
 
 ## Legend
-- 🤖 AI can do most of it · 🧑 human-only (Windows build, webcam, GPU, on-machine perf) · ⚠️ demo-critical risk
+- 🤖 AI can do most of it · 🧑 human-only (Linux target-machine run, webcam, GPU, on-machine perf) · ⚠️ demo-critical risk
 
 ---
 
 ## Phase 0 — Foundation (Days 1–2)
-- 🤖 Scaffold Flutter Windows desktop project; module structure per TechSpec.
+- 🤖 Scaffold Flutter Linux desktop project; module structure per TechSpec.
 - 🤖 SQLite setup; data models (Schema.md); ingestion of the synthetic dataset.
 - 🤖 **Hash-chained AuditLogger** — build this early; everything else logs through it.
-- 🧑 Confirm `flutter build windows` runs on the actual machine.
+- 🧑 Confirm `flutter build linux` runs on the actual target machine.
 
-**Exit:** app opens on Windows, synthetic data loads, first log entries chain correctly.
+**Exit:** app opens on Linux, synthetic data loads, first log entries chain correctly.
 
 ## Phase 1 — Local LLM + RAG core (Days 3–5) ⚠️ core value
 - 🧑 ⚠️ Install Ollama on the 8GB/RX6500 machine; pull a **3B Q4** model; confirm it answers on **CPU**. (GPU enablement = separate experimental task, below.)
@@ -31,7 +31,7 @@
 - GPU acceleration for Ollama on RX 6500 via `ollama-for-amd` + `HSA_OVERRIDE_GFX_VERSION` or Vulkan. **Allowed to fail** — CPU path is the baseline.
 
 ## Phase 2 — Auth (Days 5–6)
-- 🤖 Email-OTP via Plunk (generate → send → verify); key in local `.env`.
+- 🤖 Email-OTP via Resend (generate → send → verify); `RESEND_API_KEY` in local `.env`.
 - 🤖 Face-recognition scaffolding: webcam capture, embedder integration, enroll + match.
 - 🧑 ⚠️ Test face match on the real webcam; tune threshold; confirm OTP fallback path.
 - 🤖 Gate app behind auth; log all attempts.
@@ -65,9 +65,9 @@
 - 🧑 ⚠️ Full run-through on the real machine end-to-end.
 - 🤖 Chain-integrity "verify logs" button (visible proof of tamper-evidence — a judging highlight).
 - 🤖 Polish, empty/error states, demo script, submission write-up (blind-review safe if required).
-- 🤖 `flutter build windows` → package installer/zip with setup steps (Ollama + model pull + `.env`).
+- 🤖 `flutter build linux` → package bundle/archive with setup steps (Ollama + model pull + `.env`).
 
-**Exit:** packaged Windows build + rehearsed demo + submission.
+**Exit:** packaged Linux build + rehearsed demo + submission.
 
 ---
 
@@ -83,7 +83,7 @@
 |---|---|---|
 | ⚠️ 3B model weak/slow on 8GB+RX6500 | High | CPU baseline; LAN-fallback to stronger machine via config; RAG reduces reasoning load |
 | ⚠️ RX6500 GPU (unofficial ROCm) won't accelerate | Medium | Treated as bonus; CPU is the plan |
-| ⚠️ Face recognition flaky on webcam | Medium | OTP-via-Plunk fallback always available |
+| ⚠️ Face recognition flaky on webcam | Medium | OTP-via-Resend fallback always available |
 | ⚠️ Enhancement + LLM contend for 8GB | Medium | Run one heavy job at a time; offload enhancement to LAN box |
 | ⚠️ Solo human bandwidth over 13 days | High | AI does all code/docs; human time reserved for 🧑 tasks; drop order below |
 

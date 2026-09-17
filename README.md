@@ -62,7 +62,8 @@ that matter:
 | `OLLAMA_MODEL` | `granite4.1:3b` | Swap the chat model |
 | `RAG_TOP_K` | `6` | How many records ground each answer |
 | `RAG_MIN_SCORE` | `0.35` | Relevance floor; below it the assistant refuses to answer |
-| `PLUNK_API_KEY` | *(blank)* | OTP email, once auth lands |
+| `RESEND_API_KEY` | *(blank)* | OTP email through Resend's `onboarding@resend.dev` test sender |
+| `DEMO_MODE` | `false` | When `true`, show the registration OTP in the app instead of emailing it |
 
 `.env` is git-ignored and read from disk (next to the executable in a packaged
 build), never bundled into the app.
@@ -71,7 +72,7 @@ build), never bundled into the app.
 
 ```
 flutter pub get
-flutter run -d windows
+flutter run -d linux
 ```
 
 First launch seeds the synthetic dataset and derives the network graph. Open
@@ -99,9 +100,9 @@ The project is mid-build. This is the honest state:
   communities, statistical anomaly detection, force-directed visualisation
 
 **Not built yet**
-- Face-recognition login and the Plunk email-OTP fallback — the app currently
-  runs as the seeded investigator and records that the session was
-  unauthenticated rather than faking a login
+- Face recognition login — email-OTP registration is implemented with Resend.
+  If Resend delivery fails or `DEMO_MODE=true`, the app clearly displays the
+  generated code and records the non-emailed fallback in the audit trail.
 - News search and attach
 - Image enhancement (Real-ESRGAN / GFPGAN)
 

@@ -11,7 +11,7 @@ import 'package:flutter/services.dart' show rootBundle;
 ///
 /// **Why `.env` is read from disk rather than bundled as an asset.** This is a
 /// packaged desktop app: the investigator gets a folder, and the natural place
-/// for their Plunk key is a `.env` sitting next to `crime_intel.exe` that they
+/// for their Resend key is a `.env` sitting next to the executable that they
 /// can edit without rebuilding. Baking it into the asset bundle would mean the
 /// key is compiled in, and would make a fresh clone fail to build whenever the
 /// declared `.env` asset was missing. Load order:
@@ -132,12 +132,14 @@ abstract final class AppConfig {
   /// guessing (`docs/Rules.md` §4).
   static double get retrievalMinScore => _readDouble('RAG_MIN_SCORE', 0.35);
 
-  /// Plunk key for the OTP fallback. Empty when unset; never committed.
-  static String get plunkApiKey => _read('PLUNK_API_KEY', '');
+  /// Resend key for OTP email. Empty when unset; never committed.
+  static String get resendApiKey => _read('RESEND_API_KEY', '');
 
-  static bool get isPlunkConfigured => plunkApiKey.isNotEmpty;
+  static bool get isResendConfigured => resendApiKey.isNotEmpty;
 
-  static String get plunkFromEmail => _read('PLUNK_FROM_EMAIL', '');
+  /// Shows generated OTPs in the registration screen. Intended only for demos.
+  static bool get demoMode =>
+      _read('DEMO_MODE', 'false').toLowerCase() == 'true';
 
   /// Non-secret summary for diagnostics. Never includes key material.
   static Map<String, String> describe() => {
@@ -147,7 +149,8 @@ abstract final class AppConfig {
         'embedModel': embedModel,
         'retrievalTopK': '$retrievalTopK',
         'retrievalMinScore': '$retrievalMinScore',
-        'plunkConfigured': '$isPlunkConfigured',
+        'resendConfigured': '$isResendConfigured',
+        'demoMode': '$demoMode',
       };
 
   @visibleForTesting

@@ -1,6 +1,6 @@
 # CrimeIntel — Technical Specification (TechSpec)
 
-Platform: **Flutter (Windows desktop)** · Target machine baseline: **8GB RAM, AMD RX 6500 (4GB, unofficial ROCm)** — plan assumes CPU inference works; GPU is a bonus.
+Platform: **Flutter (Linux desktop)** · Target machine baseline: **8GB RAM, AMD RX 6500 (4GB, unofficial ROCm)** — plan assumes CPU inference works; GPU is a bonus.
 
 ---
 
@@ -8,7 +8,7 @@ Platform: **Flutter (Windows desktop)** · Target machine baseline: **8GB RAM, A
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Flutter Windows UI                         │
+│                    Flutter Linux UI                           │
 │  Login(Face/OTP) · Chat · Criminal Pages · Graph · Logs ·     │
 │  Image Enhancer · Case Notes                                  │
 ├─────────────────────────────────────────────────────────────┤
@@ -18,7 +18,7 @@ Platform: **Flutter (Windows desktop)** · Target machine baseline: **8GB RAM, A
 ├───────────┬───────────┬────────────┬───────────┬─────────────┤
 │  Auth      │  LLM       │  RAG       │  Enhance  │  Graph/NLP   │
 │  Face embed│  Ollama    │  Vector DB │  Real-    │  entity ext  │
-│  + Plunk   │  (3B Q4,   │  + record  │  ESRGAN   │  + centrality│
+│  + Resend  │  (3B Q4,   │  + record  │  ESRGAN   │  + centrality│
 │  email OTP │  swappable)│  store     │  + GFPGAN │  + anomaly   │
 ├───────────┴───────────┴────────────┴───────────┴─────────────┤
 │  Local Storage: SQLite (records+logs) · Vector index · Files  │
@@ -31,8 +31,8 @@ Platform: **Flutter (Windows desktop)** · Target machine baseline: **8GB RAM, A
 
 ### 2.1 Auth — `auth/`
 - **Primary: custom face recognition.** Capture from webcam → face detector → face-embedding model (e.g. an ONNX ArcFace/FaceNet-style embedder) → cosine-match against enrolled investigator embeddings stored locally. Threshold-gated.
-- **Fallback: email OTP via Plunk.** Generate a 6-digit code → send through Plunk's transactional email API → verify. Plunk API key lives in a local `.env` (never in repo).
-- Note: this is a *custom* matcher (matches faces we enrolled), deliberately **not** Windows Hello (which only checks the OS user and can't be forced face-only on Windows).
+- **Fallback: email OTP via Resend.** Generate a 6-digit code → send through Resend's transactional email API → verify. `RESEND_API_KEY` lives in a local `.env` (never in repo). If delivery fails or `DEMO_MODE=true`, the app visibly presents the code and the audit event records `demo fallback, not emailed`.
+- Note: this is a *custom* matcher (matches faces we enrolled), deliberately independent of OS account authentication, which cannot provide an app-controlled face-only check.
 - Session gated behind successful auth; every login attempt (success/fail/OTP) is logged.
 
 ### 2.2 LLM — `llm/`
@@ -46,7 +46,7 @@ Platform: **Flutter (Windows desktop)** · Target machine baseline: **8GB RAM, A
 ### 2.3 RAG — `rag/`
 - **This is retrieval, not training.** No model is fine-tuned anywhere in the app. Granite stays frozen; records are embedded once and pasted into a prompt at query time.
 - On ingest, records + log entries are chunked and embedded into the **`vector_chunks` table** using `nomic-embed-text`.
-- **Vector search runs in Dart** (`VectorMath.cosineSimilarity`), not sqlite-vec. sqlite-vec would mean loading a platform-specific native extension into `sqflite_common_ffi` and shipping that DLL with the Windows build — a packaging risk for a demo that must run from a zip. The corpus is ~100 chunks, where a linear scan of 768-dim vectors costs well under a millisecond, so an index buys nothing. Swap `VectorMath.rank` for an ANN index behind the same call if the corpus ever reaches thousands of chunks.
+- **Vector search runs in Dart** (`VectorMath.cosineSimilarity`), not sqlite-vec. sqlite-vec would mean loading a platform-specific native extension into `sqflite_common_ffi` and shipping that shared object with the Linux build — a packaging risk for a demo that must run from a zip. The corpus is ~100 chunks, where a linear scan of 768-dim vectors costs well under a millisecond, so an index buys nothing. Swap `VectorMath.rank` for an ANN index behind the same call if the corpus ever reaches thousands of chunks.
 - Query flow: user question → retrieve top-k relevant records/logs → build a grounded prompt (retrieved context + cit­ation IDs) → LLM answers **only** from retrieved context → answer shown with the source record IDs.
 - Refuses / says "not in the database" when retrieval returns nothing relevant (no hallucinated facts).
 
@@ -101,12 +101,12 @@ Four independent things must all fail for the assistant to mutate a record:
 
 | Layer | Choice | Notes |
 |---|---|---|
-| UI / app | Flutter (Windows desktop) | one codebase, native window |
+| UI / app | Flutter (Linux desktop) | one codebase, native window |
 | LLM runtime | Ollama · `granite4.1:3b` | local, free, no rate limits, tool-calling |
 | RAG store | SQLite `vector_chunks` + in-Dart cosine | offline, no native extension |
 | Embeddings | `nomic-embed-text` (768-dim) | offline |
 | Face auth | webcam + ONNX face embedder (ArcFace/FaceNet-style) | **not built yet** |
-| OTP email | Plunk transactional email | **not built yet**; key in local `.env` |
+| OTP email | Resend transactional email | implemented; `RESEND_API_KEY` in local `.env` |
 | Image enhance | Real-ESRGAN + GFPGAN/CodeFormer | **not built yet** |
 | Graph/NLP | gazetteer NER + PageRank/betweenness/label-propagation, pure Dart | no Python side-process |
 | News | web search API / light fetch | **not built yet** |
@@ -116,7 +116,7 @@ Four independent things must all fail for the assistant to mutate a record:
 
 | Package | Licence | Purpose |
 |---|---|---|
-| `sqflite_common_ffi` | BSD-2 | SQLite on Windows desktop via FFI |
+| `sqflite_common_ffi` | BSD-2 | SQLite on Linux desktop via FFI |
 | `sqflite_common` | BSD-2 | SQLite API surface |
 | `path` / `path_provider` | BSD-3 | Database file location |
 | `crypto` | BSD-3 | SHA-256 for the audit chain |
@@ -134,13 +134,13 @@ Removed: `google_fonts` (fetched fonts over HTTP at launch, breaking Rules §16)
 
 ## 6. Build & Release
 
-- Enable desktop: `flutter config --enable-windows-desktop`
-- Run: `flutter run -d windows`
-- Build: `flutter build windows` → `build/windows/x64/runner/Release/`
+- Enable desktop: `flutter config --enable-linux-desktop`
+- Run: `flutter run -d linux`
+- Build: `flutter build linux` → `build/linux/x64/release/bundle/`
 - Package the folder (and any bundled enhancement/Ollama-setup helper) into an installer/zip for teammates.
 
 ## 7. Security / Privacy
 
-- Face embeddings + Plunk key + any secrets stored locally, never committed.
+- Face embeddings + Resend key + any secrets stored locally, never committed.
 - Synthetic data only; nothing real leaves the machine except opt-in news queries.
 - Hash-chained logs make the audit trail defensible — a headline feature for judging.

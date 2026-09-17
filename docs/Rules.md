@@ -24,7 +24,7 @@ Rules for any contributor (human or AI agent). Tool-agnostic.
 13. Image enhancement and the LLM must not both hold large memory at once (8GB budget) — run one heavy job at a time.
 
 ## 4. Security / Privacy Rules
-14. Secrets (Plunk API key, any keys) live in a local `.env`, git-ignored, never committed.
+14. Secrets (Resend API key, any keys) live in a local `.env`, git-ignored, never committed.
 15. Face embeddings stored locally only; never exported, never logged in raw form.
 16. News search is the only default outbound network call besides OTP email; nothing else phones home.
 
@@ -34,7 +34,7 @@ Rules for any contributor (human or AI agent). Tool-agnostic.
 19. No hardcoded secrets or machine-specific paths.
 
 ## 6. Testing / Hardware Rules
-20. **Not "done" until it runs on the real 8GB machine.** LLM latency, face match, enhancement, and Windows build are hardware-gated (🧑).
+20. **Not "done" until it runs on the real 8GB Linux machine.** LLM latency, face match, enhancement, and Linux build are hardware-gated (🧑).
 21. Record real measured numbers; never claim performance not measured on-device.
 22. Keep the M2 chat-over-DB demo runnable at all times after Day 5.
 

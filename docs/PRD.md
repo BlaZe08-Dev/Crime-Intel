@@ -1,7 +1,7 @@
 # CrimeIntel — Product Requirements Document (PRD)
 
 > AI-Powered Criminal Network Analysis System (Hackathon PS12)
-> Platform: **Windows desktop app (Flutter)** · Deadline: **20 September 2026** · Team: one builder identity + AI assist
+> Platform: **Linux desktop app (Flutter)** · Deadline: **20 September 2026** · Team: one builder identity + AI assist
 
 ---
 
@@ -19,7 +19,7 @@ CrimeIntel is a desktop tool for a private investigator that pulls this data tog
 ## 3. Core Features
 
 ### Custom-requested features
-1. **Secure login with email OTP.** Investigator signs in through an email one-time-passcode via Plunk. Face recognition is documented future work and is not part of the hackathon build.
+1. **Secure login with email OTP.** Investigator registers through a one-time passcode delivered by Resend. Face recognition is documented future work and is not part of the hackathon build.
 2. **Chat-over-database (RAG).** The investigator uses the platform like ChatGPT, asking questions answered strictly from the criminal database and the audit logs.
 3. **News search + attach (future work).** The documented repository/audit seam is retained, but no news search or attachment UI ships for this deadline.
 4. **Assistant actions (bounded).** The assistant can create case notes. It **cannot** add/remove images or alter criminal records — a hard boundary.
@@ -37,18 +37,18 @@ CrimeIntel is a desktop tool for a private investigator that pulls this data tog
 
 ## 4. Success Criteria
 
-- Investigator logs in via email OTP reliably (pending the configured Plunk integration).
+- Investigator registers via email OTP reliably with a configured Resend key.
 - Asks a natural-language question and gets an answer grounded in the synthetic DB, with the source records shown.
 - Sees an auto-generated relationship graph for a criminal and the flagged key individuals.
 - Every action they take appears in an append-only, tamper-evident log they cannot alter.
 - Creates a case note via the assistant; confirms the assistant cannot change a criminal record.
 
 ### Definition of Done (MVP)
-Email-OTP login → chat-over-DB with real retrieval → relationship graph + key-individual highlight → immutable logging of actions → investigator media upload → assistant case-note creation, all working on a Windows build with the synthetic dataset.
+Email-OTP login → chat-over-DB with real retrieval → relationship graph + key-individual highlight → immutable logging of actions → investigator media upload → assistant case-note creation, all working on a Linux build with the synthetic dataset.
 
 ## 5. Constraints & Principles
 
-- **Windows desktop, Flutter.**
+- **Linux desktop, Flutter.**
 - **Local-first LLM** (Ollama 3B) — no hosted-API rate limits, no per-token cost. Internet used only for the news-search feature and the email-OTP send.
 - **Synthetic data only.** No real person is depicted; no real case data.
 - **Assistant is read-mostly** — grounded answers + case notes only; never mutates records.
@@ -64,9 +64,10 @@ Email-OTP login → chat-over-DB with real retrieval → relationship graph + ke
 - News search and attachment UI — descoped for the hackathon deadline; the documented `ATTACH_NEWS` repository/audit seam remains for future work.
 - Image enhancement (Real-ESRGAN/GFPGAN) — descoped for the hackathon deadline; the enhancement disclaimer seam remains for future work.
 - Registration is intentionally open for this hackathon build: any address that receives an OTP can enroll. A production version would restrict enrollment to a vetted allowlist.
+- **Demo-mode OTP fallback:** when `DEMO_MODE=true`, or Resend delivery fails, the generated OTP is displayed in the registration UI and the audit entry is marked `demo fallback, not emailed`. This keeps a deadline demo usable but is not appropriate for production authentication.
 
 ## 7. Team & Timeline
 
 - One human builder ("Team") + AI assist (Claude Code and other AI tools).
 - Deadline 12 September; the second team submits the same day on a different PS.
-- **Human-only gates:** Windows build/signing, face-recognition on real hardware/webcam, Ollama-on-AMD GPU enablement, on-machine performance under the 8GB limit. See ImplementationPlan.md.
+- **Human-only gates:** Linux build/package validation on the real target machine, face-recognition on real hardware/webcam, Ollama-on-AMD GPU enablement, on-machine performance under the 8GB limit. See ImplementationPlan.md.

@@ -5,7 +5,7 @@ For AI coding agents (Claude Code now; general for others later). Read this, PRD
 ---
 
 ## 1. What this is
-A Flutter **Windows desktop** app: an investigator logs in (face + email-OTP fallback), chats over a **synthetic criminal database** via a **local LLM (Ollama 3B) with RAG**, sees **relationship graphs / key individuals / anomalies**, enhances blurry images locally, and works under a **hash-chained immutable audit log**. The assistant can create case notes but can never alter records.
+A Flutter **Linux desktop** app: an investigator logs in (face + email-OTP fallback), chats over a **synthetic criminal database** via a **local LLM (Ollama 3B) with RAG**, sees **relationship graphs / key individuals / anomalies**, enhances blurry images locally, and works under a **hash-chained immutable audit log**. The assistant can create case notes but can never alter records.
 
 ## 2. Read-first order
 1. `PRD.md` — what & why
@@ -25,9 +25,9 @@ A Flutter **Windows desktop** app: an investigator logs in (face + email-OTP fal
 - **Synthetic data only; enhanced images labeled as non-forensic.**
 
 ## 4. Division of labor (one human + AI)
-**You (agent) can:** scaffold, write Dart/Flutter code, build the RAG pipeline, the hash-chain logger, the ActionGuard, graph/NLP logic, UI, the Plunk OTP flow, docs, demo script.
+**You (agent) can:** scaffold, write Dart/Flutter code, build the RAG pipeline, the hash-chain logger, the ActionGuard, graph/NLP logic, UI, the Resend OTP flow, docs, demo script.
 
-**You cannot (hand to human, 🧑):** run the Windows build on the real machine, install/run Ollama on the 8GB/RX6500 box, test the webcam face match, do the GPU-accel wrangling, measure real latency/memory, judge whether enhancement quality is acceptable by eye. Never fabricate these results — mark the task 🧑 and hand over a precise checklist.
+**You cannot (hand to human, 🧑):** substitute a sandbox run for validation on the real Linux target machine, install/run Ollama on the 8GB/RX6500 box, test the webcam face match, do the GPU-accel wrangling, measure real latency/memory, or judge enhancement quality by eye. Never fabricate these results — mark the task 🧑 and hand over a precise checklist.
 
 ## 5. Working a task
 1. Find it in `Tracker.md`; check dependencies in `ImplementationPlan.md`.
@@ -41,7 +41,7 @@ A Flutter **Windows desktop** app: an investigator logs in (face + email-OTP fal
 The human's style: **clarifying questions before building; decisions locked before execution.** Offer concrete options (MCQ for quick calls). Don't assume model choices, storage details, or flows.
 
 ## 7. Credential / setup steps
-When the human must do setup (Plunk key, Ollama install, model pull, `.env`), write **plain-language, numbered, ordered steps**.
+When the human must do setup (Resend key, Ollama install, model pull, `.env`), write **plain-language, numbered, ordered steps**.
 
 ## 8. Definition of done (agent task)
 - Compiles; `main` builds.
