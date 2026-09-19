@@ -8,9 +8,8 @@ Grouped by role, with how each is used. Verify licenses at integration time (Rul
 
 | Repo / Tool | Role | Notes |
 |---|---|---|
-| [ollama/ollama](https://github.com/ollama/ollama) | **LLM runtime** | Local server on `localhost:11434`; free, no rate limits. Pull `llama3.2:3b` (or `qwen2.5:3b`). |
+| [ollama/ollama](https://github.com/ollama/ollama) | **LLM runtime** | Local server on `localhost:11434`; pull `granite4.1:3b` for this build. |
 | [likelovewant/ollama-for-amd](https://github.com/likelovewant/ollama-for-amd) | RX6500 GPU accel (experimental) | Community ROCm build supporting gfx1034. Optional/bonus only. |
-| [ChharithOeun/ollama-amd-windows-setup](https://github.com/ChharithOeun/ollama-amd-windows-setup) | AMD-on-Windows setup guide | Confirms RX6500 = "3B at best," Vulkan/community-fork path. Read before attempting GPU. |
 | Flutter ↔ Ollama patterns | Integration reference | `ollama_dart` package or plain `http` calls; stream responses. |
 
 > **Design:** access the LLM through an `LlmClient` interface with a configurable base URL so you can point at a LAN machine (escape hatch) without code changes.
@@ -22,12 +21,12 @@ Grouped by role, with how each is used. Verify licenses at integration time (Rul
 | sqlite-vec (or a local FAISS-style index) | Vector store | Keeps retrieval fully local alongside SQLite records/logs. |
 | A small local embedding model (via Ollama, e.g. `nomic-embed-text`) | Embeddings | Runs in the same Ollama instance; no extra service. |
 
-## Face Recognition (custom auth)
+## Face Recognition (future work; descoped)
 
 | Repo / Model | Role | Notes |
 |---|---|---|
 | ArcFace / FaceNet-style ONNX embedder | Face embeddings | Enroll investigator → match by cosine similarity. |
-| [pub.dev `local_auth`](https://pub.dev/packages/local_auth) | Reference only | Note: Windows path = Windows Hello (OS user), **not** custom matching — we intentionally build a custom matcher instead. Documented so no one re-adds it by mistake. |
+| [pub.dev `local_auth`](https://pub.dev/packages/local_auth) | Reference only | Provides OS authentication, not the custom face matcher this future feature would require. |
 | Webcam capture (Flutter `camera` / platform channel) | Capture | Feeds frames to the embedder. |
 
 ## Email OTP
@@ -36,7 +35,7 @@ Grouped by role, with how each is used. Verify licenses at integration time (Rul
 |---|---|---|
 | [Resend](https://resend.com/) | OTP delivery | Transactional email API; `RESEND_API_KEY` in local `.env`. OTP = **email**, not SMS. |
 
-## Image Enhancement (local, offline)
+## Image Enhancement (future work; descoped)
 
 | Repo / Model | Role | Notes |
 |---|---|---|
@@ -45,7 +44,9 @@ Grouped by role, with how each is used. Verify licenses at integration time (Rul
 | CodeFormer (sczhou/CodeFormer) | Alt face restoration | Alternative to GFPGAN; good on heavy degradation. |
 | [HF Space: avans06 upscale/restore](https://huggingface.co/spaces/avans06/Image_Face_Upscale_Restoration-GFPGAN-RestoreFormer-CodeFormer-GPEN) | Reference UI | Shows the model combo in action. |
 
-> **Not using Gemini/paid APIs:** costs money, breaks the offline/self-contained story, and would send crime-scene images off-device. Local Real-ESRGAN+GFPGAN is the chosen path. Always label output as a reconstruction aid, not evidence.
+> **Future-work direction:** no enhancement component ships in this build. If
+> added later, keep processing local and label output as a reconstruction aid,
+> not evidence.
 
 ## Graph / Network Analysis
 

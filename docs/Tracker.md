@@ -18,7 +18,7 @@
 | 0.3 | Hash-chained AuditLogger | 🤖 | ☑ |
 | 0.4 | Linux desktop debug build and launch verification | 🤖 | ☑ |
 
-- 0.1 — `windows/` and `linux/` runners generated; `flutter analyze` and `flutter test` run
+- 0.1 — Linux runner generated; `flutter analyze` and `flutter test` run
   clean. Modules now match TechSpec §2: `llm/`, `rag/`, `graph/`, `assistant/`,
   `data/repositories/` all contain working code, not just models.
 - 0.4 — **Verified 2026-09-16 on Linux:** GTK development headers, Clang,
@@ -38,7 +38,7 @@
 | 1.5 | ⚠ Measure end-to-end latency on the real machine | 🧑 | ◐ |
 | 1.x | (Experimental) GPU acceleration | 🧑 | ☐ |
 
-- 1.1 — Ollama 0.33.2 installed via winget. `granite4.1:3b` (2.1 GB) and
+- 1.1 — Ollama 0.33.2 installed. `granite4.1:3b` (2.1 GB) and
   `nomic-embed-text` (274 MB, 768-dim) pulled and verified responding.
 - 1.5 — Measured directly against the Ollama API on this machine: **59 s cold**
   (first call, model load included), **4.3 s warm** for a short tool-calling
@@ -50,10 +50,10 @@
 ## Phase 2 — Auth
 | # | Task | Who | Status |
 |---|---|---|---|
-| 2.1 | Email OTP via Resend (send/verify), key in .env | 🤖 | ◐ |
+| 2.1 | Email OTP via Resend (send/verify), key in .env | 🤖 | ☑ |
 | 2.2 | Face capture + embedder + enroll/match (descoped) | 🤖 | ☐ |
 | 2.3 | ⚠ Test face match on real webcam; tune threshold (descoped) | 🧑 | ☐ |
-| 2.4 | Gate app behind auth; log all attempts | 🤖 | ◐ |
+| 2.4 | Gate app behind auth; log all attempts | 🤖 | ☑ |
 
 - A registration/login gate is implemented in source: email → Resend 6-digit,
   one-minute OTP → mandatory strong-password creation; later sessions require
@@ -62,10 +62,11 @@
 - `OTP_SENT`, `OTP_OK`, and `LOGIN_FAIL` are audit logged. The developer-owned
   `RESEND_API_KEY` is a local `.env` setting only. Resend's test sender can
   deliver to the Resend account owner's address without a verified domain.
-- This remains ◐ until a real Resend-key delivery check is performed. On any
-  delivery failure, or with `DEMO_MODE=true`, the UI shows the code and logs
-  `demo fallback, not emailed`. The app itself has launched on
-  Linux; the auth flow is covered by the automated test suite.
+- **Verified end-to-end on the real Linux target machine:** registration,
+  Resend OTP delivery and verification, password setup, and a subsequent
+  login all completed successfully. On any delivery failure, or with
+  `DEMO_MODE=true`, the UI shows the code and logs `demo fallback, not emailed`.
+  The auth flow is also covered by the automated test suite.
 - Face recognition is descoped for the hackathon deadline. OTP-only login is
   the intended auth path; the face seam remains documented future work.
 
@@ -128,8 +129,16 @@
 | 6.1 | ⚠ Full end-to-end run on real machine | 🧑 | ☐ |
 | 6.2 | "Verify logs" chain-integrity button | 🤖 | ☑ |
 | 6.3 | Polish + demo script + write-up (blind-safe) | 🤖 | ☐ |
-| 6.4 | `flutter build linux` → package + setup steps | 🤖 | ☐ |
+| 6.4 | `flutter build linux` → package + setup steps | 🤖 | ◐ |
 | 6.5 | Final demo dry-run | 🧑 | ☐ |
+
+- 6.4 — **Release build verified 2026-09-19:** `flutter build linux --release`
+  exited 0 and produced
+  `build/linux/x64/release/bundle/crime_intel` (with `lib/libapp.so`). This is
+  a freshly built release bundle, not the debug artifact. The sandbox cannot
+  access the host X display (`Gtk-WARNING: cannot open display: :0.0`), so an
+  interactive launch of this release bundle still needs confirmation on the
+  target desktop before this item can be marked ☑.
 
 ---
 

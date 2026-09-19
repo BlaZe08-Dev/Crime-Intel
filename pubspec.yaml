@@ -1,5 +1,5 @@
 name: crime_intel
-description: "AI-Powered Criminal Network Analysis System (Flutter Windows Desktop)"
+description: "AI-Powered Criminal Network Analysis System (Flutter Linux Desktop)"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -25,7 +25,7 @@ dependencies:
   uuid: ^4.3.3          # BSD-3 - record identifiers
   intl: ^0.19.0         # BSD-3 - date and number formatting
   http: ^1.2.0          # BSD-3 - Ollama HTTP transport (localhost only)
-  file_selector: ^1.1.0 # BSD-3 - native Windows media file picker
+  file_selector: ^1.1.0 # BSD-3 - native desktop media file picker
 
 dev_dependencies:
   flutter_test:

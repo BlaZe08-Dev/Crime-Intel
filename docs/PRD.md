@@ -9,7 +9,12 @@
 
 Criminal activity is organized, interconnected, and buried across fragmented sources — FIRs, call detail records (CDRs), financial transactions, surveillance notes, criminal history, intelligence reports. Investigators lose critical links because the data is unstructured, siloed, and manually reviewed.
 
-CrimeIntel is a desktop tool for a private investigator that pulls this data together, lets the investigator **query it in natural language** (like ChatGPT over a criminal database), automatically **maps relationships and networks**, surfaces **key individuals and suspicious patterns**, and keeps a **tamper-proof audit trail** of everything anyone does inside it.
+CrimeIntel is a Linux desktop tool for a private investigator that brings this
+synthetic data together, supports **natural-language queries** over retrieved
+records, derives **relationships and networks**, surfaces **key individuals and
+suspicious patterns**, and records supported in-app actions in a
+tamper-evident audit trail. Current verification boundaries are tracked in
+`Tracker.md`.
 
 ## 2. Target Users
 
@@ -23,7 +28,10 @@ CrimeIntel is a desktop tool for a private investigator that pulls this data tog
 2. **Chat-over-database (RAG).** The investigator uses the platform like ChatGPT, asking questions answered strictly from the criminal database and the audit logs.
 3. **News search + attach (future work).** The documented repository/audit seam is retained, but no news search or attachment UI ships for this deadline.
 4. **Assistant actions (bounded).** The assistant can create case notes. It **cannot** add/remove images or alter criminal records — a hard boundary.
-5. **Immutable, all-covering logs.** Viewing a record, uploads, updates, and deletions are all logged. Nothing can be deleted from the log. Deleted data is retained in the log.
+5. **Immutable audit logs.** Supported record views, updates, deletions, case-note
+   creation, auth events, and the implemented media-upload path are logged in
+   a hash chain. Deleted data is retained in the audit history; unbuilt features
+   do not emit fictional events.
 6. **Image enhancement (future work).** The documented disclaimer seam is retained, but Real-ESRGAN/GFPGAN is not shipping for this deadline.
 7. **Synthetic criminal database.** 5–6 fully synthetic criminals with photos, crime-scene images, and related records (see Criminals.md).
 
@@ -33,23 +41,31 @@ CrimeIntel is a desktop tool for a private investigator that pulls this data tog
 10. **Relationship / network mapping** — a visual graph of how entities connect.
 11. **Key-individual identification** — centrality analysis to surface likely leaders/hubs.
 12. **Suspicious-pattern & anomaly detection** — unusual links, transaction bursts, clustering.
-13. **Investigator insights** — visual + analytical dashboard, plus the LLM narrative.
+13. **Investigator insights** — visual + analytical dashboard. The LLM network
+    narrative is implemented but awaits live-Ollama verification on the target machine.
 
 ## 4. Success Criteria
+
+These are acceptance targets; `Tracker.md` records which have been verified.
 
 - Investigator registers via email OTP reliably with a configured Resend key.
 - Asks a natural-language question and gets an answer grounded in the synthetic DB, with the source records shown.
 - Sees an auto-generated relationship graph for a criminal and the flagged key individuals.
-- Every action they take appears in an append-only, tamper-evident log they cannot alter.
+- Every supported action appears in an append-only, tamper-evident log they cannot alter.
 - Creates a case note via the assistant; confirms the assistant cannot change a criminal record.
 
 ### Definition of Done (MVP)
-Email-OTP login → chat-over-DB with real retrieval → relationship graph + key-individual highlight → immutable logging of actions → investigator media upload → assistant case-note creation, all working on a Linux build with the synthetic dataset.
+Email-OTP login → chat-over-DB with real retrieval → relationship graph +
+key-individual highlight → immutable logging of supported actions → investigator
+media upload → assistant case-note creation, all verified on a Linux build with
+the synthetic dataset. Media-upload and live-Ollama verification remain open at
+the time of this document update.
 
 ## 5. Constraints & Principles
 
 - **Linux desktop, Flutter.**
-- **Local-first LLM** (Ollama 3B) — no hosted-API rate limits, no per-token cost. Internet used only for the news-search feature and the email-OTP send.
+- **Local-first LLM** (Ollama 3B) — no hosted-API rate limits or per-token cost.
+  Network access is needed for email-OTP delivery; news search is future work.
 - **Synthetic data only.** No real person is depicted; no real case data.
 - **Assistant is read-mostly** — grounded answers + case notes only; never mutates records.
 - **Auditability is a first-class feature**, not an afterthought.
@@ -69,5 +85,9 @@ Email-OTP login → chat-over-DB with real retrieval → relationship graph + ke
 ## 7. Team & Timeline
 
 - One human builder ("Team") + AI assist (Claude Code and other AI tools).
-- Deadline 12 September; the second team submits the same day on a different PS.
-- **Human-only gates:** Linux build/package validation on the real target machine, face-recognition on real hardware/webcam, Ollama-on-AMD GPU enablement, on-machine performance under the 8GB limit. See ImplementationPlan.md.
+- Deadline 20 September 2026.
+- **Remaining human-only gates:** interactive launch of the fresh Linux release
+  bundle, media upload on the target machine, live-Ollama responses (including
+  the network narrative), and end-to-end latency measurement. Face recognition
+  is deliberately descoped; GPU acceleration is experimental rather than a
+  delivery gate. See `Tracker.md`.
