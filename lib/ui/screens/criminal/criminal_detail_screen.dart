@@ -13,6 +13,7 @@ import '../../../models/text_record.dart';
 import '../../../core/utils/id_generator.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/sync_status_badge.dart';
+import '../../../main.dart';
 
 /// A single criminal's record (`docs/AppFlow.md` §4).
 ///
@@ -254,18 +255,25 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
   Widget build(BuildContext context) {
     final criminal = _criminal;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(criminal?.name ?? widget.criminalId),
-        backgroundColor: AppColors.surface,
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: SyncStatusBadge(compact: false),
-          ),
-        ],
-      ),
+    return ServicesScope(
+      services: widget.services,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: Text(criminal?.name ?? widget.criminalId),
+          backgroundColor: AppColors.surface,
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 240,
+                  child: SyncStatusBadge(compact: false),
+                ),
+              ),
+            ),
+          ],
+        ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : criminal == null
@@ -320,6 +328,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                       for (final note in _notes) _note(note),
                   ],
                 ),
+      ),
     );
   }
 

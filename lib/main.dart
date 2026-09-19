@@ -43,25 +43,37 @@ class _CrimeIntelAppState extends State<CrimeIntelApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppConstants.appName,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: FutureBuilder<AppServices>(
-        future: _startup,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const _StartupSplash();
-          }
-          if (snapshot.hasError) {
-            return StartupFailureView(
-              error: snapshot.error!,
-              onRetry: _retry,
-            );
-          }
-          return LoginScreen(services: snapshot.data!);
-        },
-      ),
+    return FutureBuilder<AppServices>(
+      future: _startup,
+      builder: (context, snapshot) {
+        final services = snapshot.data;
+        Widget home;
+        if (snapshot.connectionState != ConnectionState.done) {
+          home = const _StartupSplash();
+        } else if (snapshot.hasError) {
+          home = StartupFailureView(
+            error: snapshot.error!,
+            onRetry: _retry,
+          );
+        } else {
+          home = LoginScreen(services: services!);
+        }
+
+        final app = MaterialApp(
+          title: AppConstants.appName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.darkTheme,
+          home: home,
+        );
+
+        if (services != null) {
+          return ServicesScope(
+            services: services,
+            child: app,
+          );
+        }
+        return app;
+      },
     );
   }
 }

@@ -80,6 +80,7 @@ class _SyncStatusBadgeState extends State<SyncStatusBadge> {
           borderRadius: BorderRadius.circular(8),
           onTap: () => _showSyncDetails(context, services, status),
           child: Container(
+            constraints: const BoxConstraints(maxWidth: 280),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
@@ -91,12 +92,16 @@ class _SyncStatusBadgeState extends State<SyncStatusBadge> {
               children: [
                 Icon(icon, size: 16, color: color),
                 const SizedBox(width: 8),
-                Text(
-                  status.label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: color,
+                Flexible(
+                  child: Text(
+                    status.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
                   ),
                 ),
               ],
