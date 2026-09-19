@@ -27,6 +27,7 @@ enum LogAction {
   LOGIN_FAIL,
   OTP_SENT,
   OTP_OK,
+  PASSWORD_RESET,
   VIEW_RECORD,
   UPLOAD,
   UPDATE,
@@ -46,6 +47,8 @@ enum LogAction {
         return 'OTP Dispatched';
       case LogAction.OTP_OK:
         return 'OTP Verified';
+      case LogAction.PASSWORD_RESET:
+        return 'Password Reset';
       case LogAction.VIEW_RECORD:
         return 'Record Viewed';
       case LogAction.UPLOAD:

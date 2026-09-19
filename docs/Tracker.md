@@ -59,7 +59,7 @@
   one-minute OTP → mandatory strong-password creation; later sessions require
   the stored salted, iterated password hash. `AuthSessionIssuer.issue` remains
   the single mint point and logs `LOGIN_OK` only after successful sign-in.
-- `OTP_SENT`, `OTP_OK`, and `LOGIN_FAIL` are audit logged. The developer-owned
+- `OTP_SENT`, `OTP_OK`, `LOGIN_FAIL`, and `PASSWORD_RESET` are audit logged. The developer-owned
   `RESEND_API_KEY` is a local `.env` setting only. Resend's test sender can
   deliver to the Resend account owner's address without a verified domain.
 - **Verified end-to-end on the real Linux target machine:** registration,
@@ -153,7 +153,7 @@
 | `UPDATE` | ☑ | `CrimeRepository.updateCriminal` |
 | `LLM_QUERY` | ☑ | `AssistantService`, plus ActionGuard refusals |
 | `ATTACH_NEWS` | ◐ | repository method ready; no news feature to call it |
-| `LOGIN_OK` / `LOGIN_FAIL` / `OTP_SENT` / `OTP_OK` | ◐ | auth flow in source; awaiting executable tests |
+| `LOGIN_OK` / `LOGIN_FAIL` / `OTP_SENT` / `OTP_OK` / `PASSWORD_RESET` | ◐ | auth flow in source; awaiting executable tests |
 | `ENHANCE_IMAGE` | ☐ | needs Phase 5 enhancement |
 
 The four unwired actions have no feature behind them yet. Emitting them now

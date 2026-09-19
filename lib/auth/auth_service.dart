@@ -16,7 +16,7 @@ import '../core/utils/id_generator.dart';
 /// Local account registration and credential verification.
 ///
 /// OTPs are deliberately memory-only: restarting the app invalidates pending
-/// registration codes. Passwords are salted, iterated SHA-256 derivations;
+/// registration and password-reset codes. Passwords are salted, iterated SHA-256 derivations;
 /// neither OTPs nor plaintext passwords are persisted or written to audit data.
 class AuthService {
   static const otpExpiry = Duration(minutes: 1);
@@ -26,31 +26,44 @@ class AuthService {
   final AuditLogger _audit;
   final http.Client _http;
   final String Function() _otpGenerator;
+  final DateTime Function() _now;
   final Map<String, _PendingOtp> _pending = {};
 
   AuthService(
       {required Database db,
       required AuditLogger audit,
       http.Client? httpClient,
-      String Function()? otpGenerator})
+      String Function()? otpGenerator,
+      DateTime Function()? now})
       : _db = db,
         _audit = audit,
         _http = httpClient ?? http.Client(),
-        _otpGenerator = otpGenerator ?? _newOtp;
+        _otpGenerator = otpGenerator ?? _newOtp,
+        _now = now ?? DateTime.now;
 
-  Future<OtpDelivery> requestRegistrationOtp(String rawEmail) async {
+  Future<OtpDelivery> requestRegistrationOtp(String rawEmail) =>
+      _requestOtp(rawEmail, _OtpPurpose.registration);
+
+  Future<OtpDelivery> requestPasswordResetOtp(String rawEmail) =>
+      _requestOtp(rawEmail, _OtpPurpose.passwordReset);
+
+  Future<OtpDelivery> _requestOtp(String rawEmail, _OtpPurpose purpose) async {
     final email = _email(rawEmail);
     final existing =
         await _db.query('app_users', where: 'email = ?', whereArgs: [email]);
-    if (existing.isNotEmpty) {
+    if (purpose == _OtpPurpose.registration && existing.isNotEmpty) {
       throw const AuthException(
           'An account already exists for this email. Sign in instead.');
     }
+    if (purpose == _OtpPurpose.passwordReset && existing.isEmpty) {
+      throw const AuthException('No account exists for this email.');
+    }
     final code = _otpGenerator();
-    _pending[email] = _PendingOtp(code, DateTime.now().add(otpExpiry));
+    _pending[email] = _PendingOtp(code, _now().add(otpExpiry), purpose);
 
     if (AppConfig.demoMode) {
-      await _logOtpSent(email, demoFallback: true, reason: 'DEMO_MODE=true');
+      await _logOtpSent(email, purpose,
+          demoFallback: true, reason: 'DEMO_MODE=true');
       return OtpDelivery.demo(code);
     }
 
@@ -79,7 +92,7 @@ class AuthService {
         throw const AuthException(
             'Resend did not accept the verification email.');
       }
-      await _logOtpSent(email);
+      await _logOtpSent(email, purpose);
       return const OtpDelivery.emailed();
     } catch (error, stackTrace) {
       debugPrint(
@@ -88,18 +101,18 @@ class AuthService {
         'HTTP response body: ${response?.body ?? 'no response body'}\n'
         '$stackTrace',
       );
-      await _logOtpSent(email,
+      await _logOtpSent(email, purpose,
           demoFallback: true, reason: 'Resend send failed');
       return OtpDelivery.demo(code);
     }
   }
 
-  Future<void> _logOtpSent(String email,
+  Future<void> _logOtpSent(String email, _OtpPurpose purpose,
           {bool demoFallback = false, String? reason}) =>
       _audit.log(
         context: const SystemContext(),
         action: LogAction.OTP_SENT,
-        targetType: 'Registration',
+        targetType: purpose.targetType,
         targetId: email,
         payload: {
           'email': email,
@@ -115,9 +128,7 @@ class AuthService {
       required String password}) async {
     final email = _email(rawEmail);
     final pending = _pending[email];
-    if (pending == null ||
-        !DateTime.now().isBefore(pending.expiresAt) ||
-        pending.code != code.trim()) {
+    if (!_isValidOtp(pending, code, _OtpPurpose.registration)) {
       await _audit.log(
           context: const SystemContext(),
           action: LogAction.LOGIN_FAIL,
@@ -152,6 +163,50 @@ class AuthService {
           cause: error);
     }
   }
+
+  Future<void> verifyAndResetPassword(
+      {required String rawEmail,
+      required String code,
+      required String password}) async {
+    final email = _email(rawEmail);
+    final pending = _pending[email];
+    if (!_isValidOtp(pending, code, _OtpPurpose.passwordReset)) {
+      await _audit.log(
+          context: const SystemContext(),
+          action: LogAction.LOGIN_FAIL,
+          targetType: _OtpPurpose.passwordReset.targetType,
+          targetId: email,
+          payload: {'reason': 'invalid_or_expired_otp'});
+      throw const AuthException(
+          'That verification code is invalid or has expired. Request a new code.');
+    }
+    _validatePassword(password);
+    final salt = base64UrlEncode(
+        List<int>.generate(16, (_) => Random.secure().nextInt(256)));
+    try {
+      // Password values are never included in the audit payload or persisted
+      // outside the replacement salt and derived hash.
+      await _audit.log(
+          context: const SystemContext(),
+          action: LogAction.PASSWORD_RESET,
+          targetType: _OtpPurpose.passwordReset.targetType,
+          targetId: email,
+          payload: {'email': email});
+      await _db.update('app_users',
+          {'passwordSalt': salt, 'passwordHash': _derive(password, salt)},
+          where: 'email = ?', whereArgs: [email]);
+      _pending.remove(email);
+    } catch (error) {
+      throw AuthException('Could not reset the password. Please try again.',
+          cause: error);
+    }
+  }
+
+  bool _isValidOtp(_PendingOtp? pending, String code, _OtpPurpose purpose) =>
+      pending != null &&
+      pending.purpose == purpose &&
+      _now().isBefore(pending.expiresAt) &&
+      pending.code == code.trim();
 
   Future<String> signIn(
       {required String rawEmail, required String password}) async {
@@ -218,5 +273,14 @@ class OtpDelivery {
 class _PendingOtp {
   final String code;
   final DateTime expiresAt;
-  const _PendingOtp(this.code, this.expiresAt);
+  final _OtpPurpose purpose;
+  const _PendingOtp(this.code, this.expiresAt, this.purpose);
+}
+
+enum _OtpPurpose {
+  registration('Registration'),
+  passwordReset('PasswordReset');
+
+  final String targetType;
+  const _OtpPurpose(this.targetType);
 }

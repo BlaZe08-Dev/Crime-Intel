@@ -19,7 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _otp = TextEditingController();
-  bool _registering = false, _otpSent = false, _busy = false;
+  bool _registering = false,
+      _resetting = false,
+      _otpSent = false,
+      _busy = false;
   Timer? _resendCooldown;
   int _resendSeconds = 0;
   String? _message;
@@ -38,8 +41,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _message = null;
     });
     try {
-      if (_registering && !_otpSent) {
-        await _requestRegistrationOtp();
+      if ((_registering || _resetting) && !_otpSent) {
+        await _requestOtp();
       } else if (_registering) {
         await widget.services.auth.verifyAndCreatePassword(
             rawEmail: _email.text, code: _otp.text, password: _password.text);
@@ -47,6 +50,18 @@ class _LoginScreenState extends State<LoginScreen> {
             .signIn(rawEmail: _email.text, password: _password.text);
         await widget.services.completeLogin(userId);
         if (mounted) _enterApp();
+      } else if (_resetting) {
+        await widget.services.auth.verifyAndResetPassword(
+            rawEmail: _email.text, code: _otp.text, password: _password.text);
+        if (mounted) {
+          setState(() {
+            _resetting = false;
+            _otpSent = false;
+            _otp.clear();
+            _password.clear();
+            _message = 'Password reset. Sign in with your new password.';
+          });
+        }
       } else {
         final userId = await widget.services.auth
             .signIn(rawEmail: _email.text, password: _password.text);
@@ -71,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _message = null;
     });
     try {
-      await _requestRegistrationOtp();
+      await _requestOtp();
     } on AppException catch (error) {
       if (mounted) setState(() => _message = error.message);
     } catch (_) {
@@ -84,9 +99,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _requestRegistrationOtp() async {
-    final delivery =
-        await widget.services.auth.requestRegistrationOtp(_email.text);
+  Future<void> _requestOtp() async {
+    final delivery = _registering
+        ? await widget.services.auth.requestRegistrationOtp(_email.text)
+        : await widget.services.auth.requestPasswordResetOtp(_email.text);
     if (!mounted) return;
     setState(() {
       _otpSent = true;
@@ -133,7 +149,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       Text(
                           _registering
                               ? 'Create account'
-                              : 'Investigator sign in',
+                              : _resetting
+                                  ? 'Reset password'
+                                  : 'Investigator sign in',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleLarge),
                       const SizedBox(height: 20),
@@ -142,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
                               labelText: 'Email address')),
-                      if (_registering && _otpSent) ...[
+                      if ((_registering || _resetting) && _otpSent) ...[
                         const SizedBox(height: 12),
                         TextField(
                             controller: _otp,
@@ -160,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ? 'Resend code (${_resendSeconds}s)'
                                     : 'Resend code')))
                       ],
-                      if (!_registering || _otpSent) ...[
+                      if ((!_registering && !_resetting) || _otpSent) ...[
                         const SizedBox(height: 12),
                         TextField(
                             controller: _password,
@@ -168,18 +186,36 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: InputDecoration(
                                 labelText: _registering
                                     ? 'Create strong password'
-                                    : 'Password',
-                                helperText: _registering
+                                    : _resetting
+                                        ? 'Set new strong password'
+                                        : 'Password',
+                                helperText: _registering || _resetting
                                     ? '12+ chars, uppercase, lowercase, number, symbol'
                                     : null))
                       ],
+                      if (!_registering && !_resetting)
+                        Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => setState(() {
+                                          _resetting = true;
+                                          _otpSent = false;
+                                          _message = null;
+                                          _password.clear();
+                                        }),
+                                child: const Text('Forgot password?'))),
                       if (_message != null)
                         Padding(
                             padding: const EdgeInsets.only(top: 14),
                             child: Text(_message!,
                                 style: TextStyle(
                                     color: (_message!.startsWith('Code sent') ||
-                                            _message!.startsWith('Demo mode:'))
+                                            _message!
+                                                .startsWith('Demo mode:') ||
+                                            _message!
+                                                .startsWith('Password reset'))
                                         ? AppColors.accentEmerald
                                         : AppColors.accentRose))),
                       const SizedBox(height: 18),
@@ -187,24 +223,34 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: _busy ? null : _submit,
                           child: Text(_busy
                               ? 'Please wait...'
-                              : (_registering && !_otpSent
-                                  ? 'Send 1-minute OTP'
+                              : ((_registering || _resetting) && !_otpSent
+                                  ? _resetting
+                                      ? 'Send reset code'
+                                      : 'Send 1-minute OTP'
                                   : _registering
                                       ? 'Verify and create password'
-                                      : 'Sign in'))),
+                                      : _resetting
+                                          ? 'Verify and reset password'
+                                          : 'Sign in'))),
                       TextButton(
                           onPressed: _busy
                               ? null
                               : () => setState(() {
-                                    _registering = !_registering;
+                                    if (_resetting) {
+                                      _resetting = false;
+                                    } else {
+                                      _registering = !_registering;
+                                    }
                                     _otpSent = false;
                                     _message = null;
                                     _resendSeconds = 0;
                                     _resendCooldown?.cancel();
                                   }),
-                          child: Text(_registering
-                              ? 'Already have an account? Sign in'
-                              : 'New user? Create an account')),
+                          child: Text(_resetting
+                              ? 'Back to sign in'
+                              : _registering
+                                  ? 'Already have an account? Sign in'
+                                  : 'New user? Create an account')),
                       const Text(
                           'Face authentication is unavailable until a Linux-compatible camera and enrolled recognition model are configured.',
                           textAlign: TextAlign.center,

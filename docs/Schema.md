@@ -113,7 +113,7 @@ NewsAttachment {
 LogEntry {
   seq           : Int (PK, monotonic)
   actor         : Enum { INVESTIGATOR, ASSISTANT, SYSTEM }
-  action        : Enum { LOGIN_OK, LOGIN_FAIL, OTP_SENT, OTP_OK,
+  action        : Enum { LOGIN_OK, LOGIN_FAIL, OTP_SENT, OTP_OK, PASSWORD_RESET,
                          VIEW_RECORD, UPLOAD, UPDATE, DELETE,
                          CREATE_CASENOTE, ENHANCE_IMAGE, ATTACH_NEWS, LLM_QUERY }
   targetType    : String            // Criminal, MediaItem, TextRecord, ...

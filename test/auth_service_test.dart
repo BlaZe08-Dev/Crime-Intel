@@ -91,6 +91,103 @@ void main() {
     expect(delivery.demoCode, '123456');
     await db.close();
   });
+
+  test('password reset verifies an OTP, replaces the password, and audits it',
+      () async {
+    final Database db = await DatabaseHelper.openInMemory();
+    final audit = AuditLogger(db);
+    final auth = AuthService(
+      db: db,
+      audit: audit,
+      httpClient: MockClient((_) async => httpResponse()),
+      otpGenerator: () => '123456',
+    );
+    await auth.requestRegistrationOtp('analyst@example.test');
+    await auth.verifyAndCreatePassword(
+        rawEmail: 'analyst@example.test',
+        code: '123456',
+        password: 'Original#Pass2026');
+
+    await auth.requestPasswordResetOtp('analyst@example.test');
+    await auth.verifyAndResetPassword(
+        rawEmail: 'analyst@example.test',
+        code: '123456',
+        password: 'Replacement#Pass2026');
+
+    await expectLater(
+        auth.signIn(
+            rawEmail: 'analyst@example.test', password: 'Original#Pass2026'),
+        throwsA(isA<AuthException>()));
+    expect(
+        await auth.signIn(
+            rawEmail: 'analyst@example.test', password: 'Replacement#Pass2026'),
+        startsWith('USER-'));
+    final reset = (await audit.getAllLogs())
+        .singleWhere((entry) => entry.action == LogAction.PASSWORD_RESET);
+    expect(reset.targetType, 'PasswordReset');
+    expect(reset.targetId, 'analyst@example.test');
+    await db.close();
+  });
+
+  test('password reset rejects a wrong OTP and logs the failed reset',
+      () async {
+    final Database db = await DatabaseHelper.openInMemory();
+    final audit = AuditLogger(db);
+    final auth = AuthService(
+      db: db,
+      audit: audit,
+      httpClient: MockClient((_) async => httpResponse()),
+      otpGenerator: () => '123456',
+    );
+    await auth.requestRegistrationOtp('analyst@example.test');
+    await auth.verifyAndCreatePassword(
+        rawEmail: 'analyst@example.test',
+        code: '123456',
+        password: 'Original#Pass2026');
+    await auth.requestPasswordResetOtp('analyst@example.test');
+
+    await expectLater(
+        auth.verifyAndResetPassword(
+            rawEmail: 'analyst@example.test',
+            code: '000000',
+            password: 'Replacement#Pass2026'),
+        throwsA(isA<AuthException>()));
+    final failure = (await audit.getAllLogs()).last;
+    expect(failure.action, LogAction.LOGIN_FAIL);
+    expect(failure.targetType, 'PasswordReset');
+    await db.close();
+  });
+
+  test('password reset rejects an expired OTP', () async {
+    var now = DateTime(2026, 9, 19, 12);
+    final Database db = await DatabaseHelper.openInMemory();
+    final audit = AuditLogger(db);
+    final auth = AuthService(
+      db: db,
+      audit: audit,
+      httpClient: MockClient((_) async => httpResponse()),
+      otpGenerator: () => '123456',
+      now: () => now,
+    );
+    await auth.requestRegistrationOtp('analyst@example.test');
+    await auth.verifyAndCreatePassword(
+        rawEmail: 'analyst@example.test',
+        code: '123456',
+        password: 'Original#Pass2026');
+    await auth.requestPasswordResetOtp('analyst@example.test');
+    now = now.add(AuthService.otpExpiry);
+
+    await expectLater(
+        auth.verifyAndResetPassword(
+            rawEmail: 'analyst@example.test',
+            code: '123456',
+            password: 'Replacement#Pass2026'),
+        throwsA(isA<AuthException>()));
+    final failure = (await audit.getAllLogs()).last;
+    expect(failure.action, LogAction.LOGIN_FAIL);
+    expect(failure.targetType, 'PasswordReset');
+    await db.close();
+  });
 }
 
 http.Response httpResponse() => http.Response('{"id":"email_123"}', 200);
