@@ -137,6 +137,12 @@ abstract final class AppConfig {
 
   static bool get isResendConfigured => resendApiKey.isNotEmpty;
 
+  /// Neon (Postgres) database URL for opportunistic sync.
+  /// Empty when unset; never committed.
+  static String get neonDatabaseUrl => _read('NEON_DATABASE_URL', '');
+
+  static bool get isNeonConfigured => neonDatabaseUrl.isNotEmpty;
+
   /// Shows generated OTPs in the registration screen. Intended only for demos.
   static bool get demoMode =>
       _read('DEMO_MODE', 'false').toLowerCase() == 'true';
@@ -150,6 +156,7 @@ abstract final class AppConfig {
         'retrievalTopK': '$retrievalTopK',
         'retrievalMinScore': '$retrievalMinScore',
         'resendConfigured': '$isResendConfigured',
+        'neonConfigured': '$isNeonConfigured',
         'demoMode': '$demoMode',
       };
 

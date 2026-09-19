@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../audit/audit_logger.dart';
@@ -232,17 +233,21 @@ class RagIndexer {
 
     return drafts;
   }
+  @visibleForTesting
+  Future<List<ChunkDraft>> collectDraftsForTest() => _collectDrafts();
 }
 
 /// A chunk's text before it has been embedded.
-class _ChunkDraft {
+class ChunkDraft {
   final String sourceType;
   final String sourceId;
   final String text;
 
-  const _ChunkDraft({
+  const ChunkDraft({
     required this.sourceType,
     required this.sourceId,
     required this.text,
   });
 }
+
+typedef _ChunkDraft = ChunkDraft;

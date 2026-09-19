@@ -77,10 +77,23 @@ The useful `.env` keys are:
 | `RAG_TOP_K` | `6` | How many records ground each answer |
 | `RAG_MIN_SCORE` | `0.35` | Relevance floor; below it the assistant refuses to answer |
 | `RESEND_API_KEY` | *(blank)* | OTP email through Resend's `onboarding@resend.dev` test sender |
+| `NEON_DATABASE_URL` | *(blank)* | Neon (PostgreSQL) connection string for opportunistic multi-investigator sync |
 | `DEMO_MODE` | `false` | When `true`, show the registration OTP in the app instead of emailing it |
 
 `.env` is git-ignored and read from disk (next to the executable in a packaged
 build), never bundled into the app.
+
+### Central Neon Sync Setup (Multi-Investigator)
+
+CrimeIntel operates 100% offline out-of-the-box using local SQLite. To enable cross-investigator synchronization:
+
+1. Create a free PostgreSQL database on [Neon](https://neon.tech/).
+2. Copy the connection string (with pooled or direct endpoint, e.g. `postgresql://user:pass@ep-xyz.neon.tech/neondb?sslmode=require`).
+3. Set `NEON_DATABASE_URL` in your local `.env`.
+4. Launch the app. The app automatically provisions the required tables (`shared_criminals`, `shared_case_notes`, `shared_media_items`, `shared_text_records`, and `central_audit_log`).
+5. **Sync behavior:** Sync is automatic and opportunistic whenever network connectivity is detected. A manual affordance is also available by clicking the cloud sync badge in the bottom of the navigation rail.
+6. **Two-Chain Audit Log:** Each workstation maintains its own local tamper-evident chain. Synced entries append into the central Neon chain in strict arrival order, recording both local and server timestamps.
+7. **Anonymized Attribution:** Contributions from peer investigators can be queried via RAG and search, but personal investigator identities are never revealed across terminals.
 
 ---
 

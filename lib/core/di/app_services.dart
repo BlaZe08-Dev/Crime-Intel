@@ -16,8 +16,13 @@ import '../../llm/llm_client.dart';
 import '../../llm/ollama_client.dart';
 import '../../rag/rag_indexer.dart';
 import '../../rag/rag_service.dart';
+import '../../sync/neon_client.dart';
+import '../../sync/network_checker.dart';
+import '../../sync/remote_sync_transport.dart';
+import '../../sync/sync_manager.dart';
 import '../config/app_config.dart';
 import '../security/actor_context.dart';
+import '../utils/id_generator.dart';
 
 /// Single composition root for the app.
 ///
@@ -43,6 +48,12 @@ class AppServices {
   final GraphService graph;
   final AuthService auth;
 
+  // Remote Sync
+  final RemoteSyncTransport syncTransport;
+  final NetworkAvailabilityChecker networkChecker;
+  final SyncManager syncManager;
+  final String deviceId;
+
   /// The acting investigator, minted only after [completeLogin] receives a
   /// verified local account identity. It is never available on the login UI.
   late InvestigatorContext session;
@@ -62,6 +73,10 @@ class AppServices {
     required this.assistant,
     required this.graph,
     required this.auth,
+    required this.syncTransport,
+    required this.networkChecker,
+    required this.syncManager,
+    required this.deviceId,
   });
 
   /// Builds the whole object graph.
@@ -70,6 +85,9 @@ class AppServices {
   static Future<AppServices> bootstrap({
     Database? database,
     LlmClient? llmClient,
+    RemoteSyncTransport? syncTransport,
+    NetworkAvailabilityChecker? networkChecker,
+    String? deviceId,
   }) async {
     await AppConfig.load();
 
@@ -82,6 +100,65 @@ class AppServices {
 
     final rag = RagService(vectors: vectors, llm: llm);
     final guard = ActionGuard(caseNotes: records, audit: audit);
+
+    // Resolve or generate unique device identifier for central audit attribution
+    String devId = deviceId ?? '';
+    if (devId.isEmpty) {
+      final rows = await db.query(
+        'sync_metadata',
+        where: 'key = ?',
+        whereArgs: ['deviceId'],
+      );
+      if (rows.isNotEmpty) {
+        devId = rows.first['value'] as String;
+      } else {
+        devId = IdGenerator.generate('DEV');
+        await db.insert('sync_metadata', {'key': 'deviceId', 'value': devId});
+      }
+    }
+
+    final netChecker = networkChecker ?? NetworkAvailabilityChecker();
+    final transport =
+        syncTransport ?? NeonClient(connectionUrl: AppConfig.neonDatabaseUrl);
+
+    final graphService = GraphService(records: records, graph: graphStore);
+
+    final syncManager = SyncManager(
+      db: db,
+      transport: transport,
+      networkChecker: netChecker,
+      deviceId: devId,
+      onDataPulled: () async {
+        await graphService.rebuild();
+      },
+    );
+
+    // Wire sync event handlers so local audited writes automatically queue for sync
+    audit.onEntryLogged = (entry, effectivePayload) {
+      syncManager.enqueue(
+        entityType: 'audit_entry',
+        entityId: 'LOG-${entry.seq}',
+        operation: 'INSERT',
+        payload: {
+          ...entry.toMap(),
+          if (effectivePayload != null) 'payload': effectivePayload,
+        },
+        timestamp: entry.ts,
+      );
+    };
+
+    records.onEntityMutated = (type, id, op, payload, [ts]) {
+      syncManager.enqueue(
+        entityType: type,
+        entityId: id,
+        operation: op,
+        payload: payload,
+        timestamp: ts,
+      );
+    };
+
+    await syncManager.initialize();
+    netChecker.start();
 
     return AppServices._(
       db: db,
@@ -106,8 +183,12 @@ class AppServices {
         guard: guard,
         audit: audit,
       ),
-      graph: GraphService(records: records, graph: graphStore),
+      graph: graphService,
       auth: AuthService(db: db, audit: audit),
+      syncTransport: transport,
+      networkChecker: netChecker,
+      syncManager: syncManager,
+      deviceId: devId,
     );
   }
 
@@ -128,11 +209,18 @@ class AppServices {
       investigatorId: userId,
       sessionId: 'SESSION-${DateTime.now().millisecondsSinceEpoch}',
     ));
-    await audit.log(context: session, action: LogAction.LOGIN_OK,
-        targetType: 'Account', targetId: userId, payload: {'sessionId': session.sessionId});
+    await audit.log(
+      context: session,
+      action: LogAction.LOGIN_OK,
+      targetType: 'Account',
+      targetId: userId,
+      payload: {'sessionId': session.sessionId},
+    );
   }
 
   Future<void> dispose() async {
+    networkChecker.dispose();
+    syncManager.dispose();
     llm.dispose();
     auth.dispose();
     await db.close();

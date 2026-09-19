@@ -44,7 +44,17 @@ class CrimeRepository implements CaseNoteSink {
   final Database _db;
   final AuditLogger _audit;
 
-  CrimeRepository(this._db, this._audit);
+  /// Optional listener called when an entity is mutated locally.
+  /// Used by the sync subsystem to enqueue items into the pending sync queue.
+  void Function(
+    String entityType,
+    String entityId,
+    String operation,
+    Map<String, dynamic> payload, [
+    int? timestamp,
+  ])? onEntityMutated;
+
+  CrimeRepository(this._db, this._audit, {this.onEntityMutated});
 
   Future<T> _guard<T>(String what, Future<T> Function() body) async {
     try {
@@ -246,6 +256,13 @@ class CrimeRepository implements CaseNoteSink {
         targetId: note.id,
         payload: note.toMap(),
       );
+      onEntityMutated?.call(
+        'case_note',
+        note.id,
+        'UPSERT',
+        note.toMap(),
+        note.createdAt,
+      );
       return note;
     });
   }
@@ -298,6 +315,13 @@ class CrimeRepository implements CaseNoteSink {
           'newState': updated.toMap(),
         },
       );
+      onEntityMutated?.call(
+        'criminal',
+        updated.id,
+        'UPSERT',
+        updated.toMap(),
+        updated.updatedAt,
+      );
       return updated;
     });
   }
@@ -310,12 +334,13 @@ class CrimeRepository implements CaseNoteSink {
     final existing = await getCriminalById(criminalId);
     if (existing == null) return;
 
+    final now = DateTime.now().millisecondsSinceEpoch;
     await _guard('delete the record', () async {
       await _db.update(
         'criminals',
         {
           'isDeleted': 1,
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+          'updatedAt': now,
         },
         where: 'id = ?',
         whereArgs: [criminalId],
@@ -329,6 +354,17 @@ class CrimeRepository implements CaseNoteSink {
           'previousState': existing.toMap(),
           'isSoftDeleted': true,
         },
+      );
+      onEntityMutated?.call(
+        'criminal',
+        criminalId,
+        'UPSERT',
+        {
+          ...existing.toMap(),
+          'isDeleted': 1,
+          'updatedAt': now,
+        },
+        now,
       );
     });
   }
@@ -346,6 +382,13 @@ class CrimeRepository implements CaseNoteSink {
         targetType: 'MediaItem',
         targetId: item.id,
         payload: item.toMap(),
+      );
+      onEntityMutated?.call(
+        'media_item',
+        item.id,
+        'UPSERT',
+        item.toMap(),
+        item.createdAt,
       );
       return item;
     });
@@ -368,7 +411,64 @@ class CrimeRepository implements CaseNoteSink {
         targetId: attachment.id,
         payload: attachment.toMap(),
       );
+      onEntityMutated?.call(
+        'news_attachment',
+        attachment.id,
+        'UPSERT',
+        attachment.toMap(),
+        attachment.createdAt,
+      );
       return attachment;
+    });
+  }
+
+  /// Adds a new criminal record (investigator-gated).
+  Future<Criminal> addCriminal({
+    required InvestigatorContext context,
+    required Criminal criminal,
+  }) async {
+    return _guard('create the criminal profile', () async {
+      await _db.insert('criminals', criminal.toMap());
+      await _audit.log(
+        context: context,
+        action: LogAction.UPLOAD,
+        targetType: 'Criminal',
+        targetId: criminal.id,
+        payload: criminal.toMap(),
+      );
+      onEntityMutated?.call(
+        'criminal',
+        criminal.id,
+        'UPSERT',
+        criminal.toMap(),
+        criminal.createdAt,
+      );
+      return criminal;
+    });
+  }
+
+  /// Adds an unstructured intelligence report / FIR (investigator-gated).
+  Future<TextRecord> addTextRecord({
+    required InvestigatorContext context,
+    required TextRecord record,
+  }) async {
+    return _guard('save text record', () async {
+      await _db.insert('text_records', record.toMap());
+      await _audit.log(
+        context: context,
+        action: LogAction.UPLOAD,
+        targetType: 'TextRecord',
+        targetId: record.id,
+        payload: record.toMap(),
+      );
+      onEntityMutated?.call(
+        'text_record',
+        record.id,
+        'UPSERT',
+        record.toMap(),
+        record.createdAt,
+      );
+      return record;
     });
   }
 }

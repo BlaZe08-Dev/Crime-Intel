@@ -6,3 +6,4 @@
 tags:
   live:
     skip: "needs a live Ollama server - run with: flutter test --tags live"
+  neon:

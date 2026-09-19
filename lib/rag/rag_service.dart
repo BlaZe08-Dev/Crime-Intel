@@ -163,6 +163,9 @@ RULES YOU MUST FOLLOW:
 5. Be concise and factual. This is investigative work, not prose.
 6. You cannot modify records or images. If asked to, say so plainly. You may
    save a case note if the investigator asks you to.
+7. Anonymized Attribution: Never cite, name, or state which investigator created,
+   uploaded, or contributed a record or case note. Attribute facts strictly to the
+   bracketed record id (e.g. [C-001], [NOTE-002]).
 ''';
 
   /// Renders retrieved records into the grounded user turn.

@@ -24,11 +24,15 @@ import 'models/log_entry.dart';
 class AuditLogger {
   final Database _db;
 
+  /// Optional listener called when an entry is appended to the local chain.
+  /// Used by the sync subsystem to enqueue entries for the central canonical chain.
+  void Function(LogEntry entry, Map<String, dynamic>? effectivePayload)? onEntryLogged;
+
   /// Tail of the write queue. Each `log` call chains onto it, so entries are
   /// appended one at a time regardless of caller concurrency.
   Future<void> _writeQueue = Future<void>.value();
 
-  AuditLogger(this._db);
+  AuditLogger(this._db, {this.onEntryLogged});
 
   /// Computes the entry hash defined in `docs/Schema.md` §8:
   ///
@@ -119,6 +123,7 @@ class AuditLogger {
           return newEntry;
         });
 
+        onEntryLogged?.call(entry, effectivePayload);
         completer.complete(entry);
       } catch (error, stackTrace) {
         completer.completeError(error, stackTrace);

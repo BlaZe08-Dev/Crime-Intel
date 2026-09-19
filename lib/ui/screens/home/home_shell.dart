@@ -6,6 +6,7 @@ import '../chat/chat_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../graph/graph_screen.dart';
 import '../logs/logs_screen.dart';
+import '../../widgets/sync_status_badge.dart';
 
 /// Top-level navigation between the four workspaces
 /// (`docs/AppFlow.md` §2, §3, §8, §9).
@@ -63,6 +64,15 @@ class _HomeShellState extends State<HomeShell> {
                   label: Text(d.label),
                 ),
             ],
+            trailing: const Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: SyncStatusBadge(compact: true),
+                ),
+              ),
+            ),
           ),
           const VerticalDivider(width: 1, color: AppColors.border),
           Expanded(

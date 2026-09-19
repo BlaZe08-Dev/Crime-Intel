@@ -49,7 +49,7 @@ class DatabaseHelper {
       return await databaseFactory.openDatabase(
         path,
         options: OpenDatabaseOptions(
-          version: 2,
+          version: 3,
           onCreate: createSchema,
           onUpgrade: _upgradeSchema,
           onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
@@ -69,7 +69,7 @@ class DatabaseHelper {
     return databaseFactory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onCreate: createSchema,
         onUpgrade: _upgradeSchema,
         onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
@@ -233,6 +233,7 @@ class DatabaseHelper {
     ''');
 
     await _createAuthTables(db);
+    await _createSyncTables(db);
 
     await db.execute('''
       CREATE TABLE vector_chunks (
@@ -257,6 +258,7 @@ class DatabaseHelper {
   static Future<void> _upgradeSchema(
       Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) await _createAuthTables(db);
+    if (oldVersion < 3) await _createSyncTables(db);
   }
 
   static Future<void> _createAuthTables(Database db) async {
@@ -267,6 +269,32 @@ class DatabaseHelper {
         passwordHash TEXT NOT NULL,
         passwordSalt TEXT NOT NULL,
         createdAt INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  static Future<void> _createSyncTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS pending_sync (
+        id TEXT PRIMARY KEY,
+        entityType TEXT NOT NULL,
+        entityId TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        localTs INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        retryCount INTEGER NOT NULL DEFAULT 0,
+        lastError TEXT
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_pending_sync_status ON pending_sync (status, localTs)',
+    );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       )
     ''');
   }

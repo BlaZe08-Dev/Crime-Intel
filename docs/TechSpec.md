@@ -123,6 +123,7 @@ Four independent things must all fail for the assistant to mutate a record:
 | `uuid` | BSD-3 | Record identifiers |
 | `intl` | BSD-3 | Date and number formatting |
 | `http` | BSD-3 | Ollama transport (localhost by default) |
+| `postgres` | BSD-3 | PostgreSQL driver for central Neon sync |
 
 Removed: `google_fonts` (fetched fonts over HTTP at launch, breaking Rules §16) and `flutter_dotenv` (`.env` is now read from disk beside the executable, which is the right shape for a packaged desktop app and keeps secrets out of the asset bundle). `flutter_animate` was declared but never imported.
 
@@ -144,3 +145,25 @@ Removed: `google_fonts` (fetched fonts over HTTP at launch, breaking Rules §16)
 - Face embeddings + Resend key + any secrets stored locally, never committed.
 - Synthetic data only; nothing real leaves the machine except opt-in news queries.
 - Hash-chained logs make the audit trail defensible — a headline feature for judging.
+
+## 8. Offline-First Sync Architecture & Central Neon Store (19 September 2026)
+
+### 8.1 Multi-Writer Central Database: Why Neon (PostgreSQL)
+Field analysts work offline on individual Linux machines. SQLite cannot safely act as a multi-writer concurrent store over network mounts. Neon provides serverless PostgreSQL with connection pooling, transactional integrity, and atomic row-level locking.
+
+### 8.2 Two-Chain Audit Integrity Model
+The local audit chain (`docs/Schema.md` §8) guarantees tamper-evident history on the investigator's offline workstation:
+$$\text{localEntryHash} = \text{SHA256}(\text{seq} \mid \text{actor} \mid \text{action} \mid \text{targetType} \mid \text{targetId} \mid \text{payloadHash} \mid \text{ts} \mid \text{prevHash})$$
+
+Attempting to interleave multiple offline chains creates sequence gaps and breaks hash pointers. Neon maintains the **Canonical Central Chain**:
+- Server assigns the monotonic `seq` when a batch arrives at the server.
+- Arrival ordering is strictly authoritative (order of arrival, not order of creation).
+- Both timestamps are retained:
+$$\text{canonicalEntryHash} = \text{SHA256}(\text{seq} \mid \text{deviceId} \mid \text{actor} \mid \text{action} \mid \text{targetType} \mid \text{targetId} \mid \text{payloadHash} \mid \text{localTs} \mid \text{serverTs} \mid \text{prevHash})$$
+
+### 8.3 Sync Protocol: Push & Pull
+1. **Outbound Push:** Mutations and local audit records are enqueued in SQLite `pending_sync`. When `NetworkAvailabilityChecker` detects connectivity, `SyncManager` pushes pending items in an atomic server transaction. On success, local queue items are purged; on network failure, exponential backoff is applied.
+2. **Inbound Pull:** `SyncManager` queries Neon for records with `synced_at > lastServerTs`, replaces or updates local SQLite read rows, and triggers graph re-derivation.
+3. **Conflict Resolution:** Last-synced-wins based on `synced_at`.
+4. **Anonymized Attribution:** `shared_criminals` and `shared_case_notes` do not expose investigator identities to peer terminals. The assistant prompt rule explicitly prohibits citing investigator names, referencing only bracketed entity IDs (`[C-001]`, `[NOTE-002]`). Accountability is preserved in `central_audit_log` (with no de-anonymizing admin screen shipped for this pass).
+

@@ -81,8 +81,33 @@ the time of this document update.
 - Image enhancement (Real-ESRGAN/GFPGAN) — descoped for the hackathon deadline; the enhancement disclaimer seam remains for future work.
 - Registration is intentionally open for this hackathon build: any address that receives an OTP can enroll. A production version would restrict enrollment to a vetted allowlist.
 - **Demo-mode OTP fallback:** when `DEMO_MODE=true`, or Resend delivery fails, the generated OTP is displayed in the registration UI and the audit entry is marked `demo fallback, not emailed`. This keeps a deadline demo usable but is not appropriate for production authentication.
+- **Admin/Oversight De-anonymization View (Explicit Assumption):** Contributing investigators are recorded in the central Neon audit log for accountability, but no de-anonymization screen is shipped in this pass. Cross-investigator views remain strictly anonymized.
+- **Real-time Push Notifications & Merge Conflict Resolution UI:** Synchronization is periodic/opportunistic and conflicts follow last-synced-wins; interactive conflict merge screens and live push notifications are out of scope.
 
-## 7. Team & Timeline
+---
+
+## 7. Scope Addition: Offline-First Sync to Central Neon Database (19 September 2026)
+
+### 7.1 Objective & Context
+Multiple field investigators work cases independently in disconnected or spotty network conditions. Investigators must be able to add criminal profiles, evidence notes, and media locally without network dependency. When network access is regained, pending additions push to a **central Neon (PostgreSQL) database**, and new contributions by peer investigators are pulled down into the local SQLite store.
+
+### 7.2 The Two-Chain Audit Model
+The existing audit log is an immutable SHA-256 linear hash chain (`SHA256(seq|actor|action|targetType|targetId|payloadHash|ts|prevHash)`). Multiple offline devices cannot independently append to a single shared linear chain without breaking cryptographic integrity upon interleaving.
+- **Local Per-Device Chain:** Continues to be written on the local device, guaranteeing local tamper-evidence offline.
+- **Canonical Central Chain (Neon):** Maintained centrally on Neon. Pending entries arriving from devices are appended in **arrival order** at the server (not local creation order). Neon assigns the canonical sequence and hash. Each entry records both the original local timestamp (`local_ts`) and the server arrival timestamp (`server_ts`).
+- **Both chains are valid and distinct.**
+
+### 7.3 Anonymized Attribution Guarantee
+- When RAG or search queries surface information contributed by another investigator, the UI and AI assistant cite only the entity/record ID (e.g., `[C-001]`, `[NOTE-003]`), **never** the contributing investigator's identity.
+- True attribution is preserved in that investigator's local chain and in the central Neon audit log for administrative accountability, but is never exposed across investigators in the application layer.
+- **Assumption:** No admin/oversight de-anonymization UI is built for this pass.
+
+### 7.4 Non-Degraded Offline Experience
+Local SQLite, local RAG vector search, local graph analysis, and local audit verification continue to function with zero network access. Neon sync is opportunistic and non-blocking.
+
+---
+
+## 8. Team & Timeline
 
 - One human builder ("Team") + AI assist (Claude Code and other AI tools).
 - Deadline 24 September 2026.
