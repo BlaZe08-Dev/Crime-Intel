@@ -49,7 +49,7 @@ class DatabaseHelper {
       return await databaseFactory.openDatabase(
         path,
         options: OpenDatabaseOptions(
-          version: 3,
+          version: 4,
           onCreate: createSchema,
           onUpgrade: _upgradeSchema,
           onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
@@ -69,7 +69,7 @@ class DatabaseHelper {
     return databaseFactory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
-        version: 3,
+        version: 4,
         onCreate: createSchema,
         onUpgrade: _upgradeSchema,
         onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
@@ -106,6 +106,8 @@ class DatabaseHelper {
         sourceItemId TEXT,
         isSynthetic INTEGER NOT NULL DEFAULT 1,
         createdAt INTEGER NOT NULL,
+        uploadedByInvestigatorId TEXT NOT NULL DEFAULT 'system',
+        deletedAt INTEGER,
         FOREIGN KEY (criminalId) REFERENCES criminals (id)
       )
     ''');
@@ -259,6 +261,14 @@ class DatabaseHelper {
       Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) await _createAuthTables(db);
     if (oldVersion < 3) await _createSyncTables(db);
+    if (oldVersion < 4) {
+      await db.execute(
+        "ALTER TABLE media_items ADD COLUMN uploadedByInvestigatorId TEXT NOT NULL DEFAULT 'system'",
+      );
+      await db.execute(
+        'ALTER TABLE media_items ADD COLUMN deletedAt INTEGER',
+      );
+    }
   }
 
   static Future<void> _createAuthTables(Database db) async {

@@ -55,32 +55,39 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
   }
 
   Future<void> _load() async {
-    final repo = widget.services.records;
+    try {
+      final repo = widget.services.records;
 
-    // Logged read: this is a human opening a file.
-    final criminal = await repo.openCriminalRecord(
-      context: widget.services.session,
-      criminalId: widget.criminalId,
-    );
+      final criminal = await repo.openCriminalRecord(
+        context: widget.services.session,
+        criminalId: widget.criminalId,
+      );
 
-    final media = await repo.getMediaFor(widget.criminalId);
-    final texts = await repo.getTextRecordsFor(widget.criminalId);
-    final calls = await repo.getCdrFor(widget.criminalId);
-    final payments = await repo.getFinancialFor(widget.criminalId);
-    final history = await repo.getHistoryFor(widget.criminalId);
-    final notes = await repo.getCaseNotesFor(widget.criminalId);
+      final media = await repo.getMediaFor(widget.criminalId);
+      final texts = await repo.getTextRecordsFor(widget.criminalId);
+      final calls = await repo.getCdrFor(widget.criminalId);
+      final payments = await repo.getFinancialFor(widget.criminalId);
+      final history = await repo.getHistoryFor(widget.criminalId);
+      final notes = await repo.getCaseNotesFor(widget.criminalId);
 
-    if (!mounted) return;
-    setState(() {
-      _criminal = criminal;
-      _media = media;
-      _texts = texts;
-      _calls = calls;
-      _payments = payments;
-      _history = history;
-      _notes = notes;
-      _loading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _criminal = criminal;
+        _media = media;
+        _texts = texts;
+        _calls = calls;
+        _payments = payments;
+        _history = history;
+        _notes = notes;
+        _loading = false;
+      });
+    } catch (e, st) {
+      debugPrint('ERROR in CriminalDetailScreen._load: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _uploadMedia() async {
@@ -133,6 +140,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           caption: 'Investigator upload: ${file.name}',
           isSynthetic: true,
           createdAt: DateTime.now().millisecondsSinceEpoch,
+          uploadedByInvestigatorId: widget.services.session.investigatorId,
         ),
       );
       await _load();
@@ -144,6 +152,63 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not upload media: $error')),
+      );
+    }
+  }
+
+  Future<void> _deleteMedia(MediaItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline, color: AppColors.accentRose, size: 22),
+            SizedBox(width: 8),
+            Text('Confirm Deletion', style: TextStyle(color: AppColors.textPrimary)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete "${item.caption.isEmpty ? item.type.displayName : item.caption}"?\n\n'
+          'This will soft-delete the item and record the action in the audit trail.',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accentRose,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await widget.services.records.deleteMedia(
+        context: widget.services.session,
+        mediaId: item.id,
+      );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${item.type.displayName} soft-deleted and logged to audit trail.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not delete media: $error')),
       );
     }
   }
@@ -251,6 +316,405 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     }
   }
 
+  Future<void> _addCdrRecord() async {
+    final callerController = TextEditingController();
+    final calleeController = TextEditingController();
+    final durationController = TextEditingController(text: '60');
+    final cellSiteController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.add_call, color: AppColors.primary, size: 22),
+            SizedBox(width: 10),
+            Text('Add Call Detail Record (CDR)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 460,
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Record a call detail record for ${_criminal?.name ?? widget.criminalId}. '
+                    'Saves to local SQLite immediately and logs to the immutable audit chain.',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: callerController,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Caller Number / ID *',
+                      hintText: '+91-98100-99001',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || val.trim().isEmpty ? 'Caller ID cannot be empty.' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: calleeController,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Callee Number / ID *',
+                      hintText: '+91-98200-11223',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || val.trim().isEmpty ? 'Callee ID cannot be empty.' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: durationController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Duration (seconds) *',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || int.tryParse(val.trim()) == null ? 'Enter valid duration in seconds.' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: cellSiteController,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Cell Site / Tower *',
+                      hintText: 'Pune-Sector-4',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || val.trim().isEmpty ? 'Cell site cannot be empty.' : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            icon: const Icon(Icons.save_outlined, size: 16),
+            label: const Text('Save Record'),
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogCtx, true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final record = CdrRecord(
+        id: IdGenerator.generate('CDR'),
+        criminalId: widget.criminalId,
+        callerId: callerController.text.trim(),
+        calleeId: calleeController.text.trim(),
+        durationSec: int.parse(durationController.text.trim()),
+        cellSite: cellSiteController.text.trim(),
+        ts: DateTime.now().millisecondsSinceEpoch,
+      );
+      await widget.services.records.addCdrRecord(
+        context: widget.services.session,
+        record: record,
+      );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Call detail record added and logged to the audit chain.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save call record: $error')),
+      );
+    }
+  }
+
+  Future<void> _addFinancialTxn() async {
+    final counterpartyController = TextEditingController();
+    final amountController = TextEditingController();
+    final channelController = TextEditingController(text: 'NEFT');
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.add_card, color: AppColors.primary, size: 22),
+            SizedBox(width: 10),
+            Text('Add Financial Transaction',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 460,
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Record a financial transaction involving ${_criminal?.name ?? widget.criminalId}. '
+                    'Saves to local SQLite immediately and logs to the immutable audit chain.',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: counterpartyController,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Counterparty / Beneficiary *',
+                      hintText: 'Zenith Impex',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || val.trim().isEmpty ? 'Counterparty cannot be empty.' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: amountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Amount (INR) *',
+                      hintText: '500000',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || double.tryParse(val.trim()) == null ? 'Enter valid numeric amount.' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: channelController,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Channel / Method *',
+                      hintText: 'Hawala, Cash, Wire, UPI',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || val.trim().isEmpty ? 'Channel cannot be empty.' : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            icon: const Icon(Icons.save_outlined, size: 16),
+            label: const Text('Save Transaction'),
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogCtx, true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final txn = FinancialTxn(
+        id: IdGenerator.generate('TXN'),
+        criminalId: widget.criminalId,
+        counterparty: counterpartyController.text.trim(),
+        amount: double.parse(amountController.text.trim()),
+        currency: 'INR',
+        channel: channelController.text.trim(),
+        ts: DateTime.now().millisecondsSinceEpoch,
+      );
+      await widget.services.records.addFinancialTxn(
+        context: widget.services.session,
+        txn: txn,
+      );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Financial transaction added and logged to the audit chain.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save transaction: $error')),
+      );
+    }
+  }
+
+  Future<void> _addCriminalHistory() async {
+    final offenseController = TextEditingController();
+    final dateController = TextEditingController(
+      text: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    );
+    final dispositionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.history_edu_outlined, color: AppColors.primary, size: 22),
+            SizedBox(width: 10),
+            Text('Add Prior Criminal History',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 460,
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Record prior criminal history / offense for ${_criminal?.name ?? widget.criminalId}. '
+                    'Saves to local SQLite immediately and logs to the immutable audit chain.',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: offenseController,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Offense / Charge *',
+                      hintText: 'IPC 420 / Phishing Fraud',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || val.trim().isEmpty ? 'Offense cannot be empty.' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: dateController,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Date (YYYY-MM-DD) *',
+                      hintText: '2023-08-15',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || val.trim().isEmpty ? 'Date cannot be empty.' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: dispositionController,
+                    maxLines: 2,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Disposition / Case Status *',
+                      hintText: 'Chargesheet filed, trial ongoing',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (val) =>
+                        val == null || val.trim().isEmpty ? 'Disposition cannot be empty.' : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            icon: const Icon(Icons.save_outlined, size: 16),
+            label: const Text('Save History'),
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogCtx, true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final history = CriminalHistory(
+        id: IdGenerator.generate('HIST'),
+        criminalId: widget.criminalId,
+        offense: offenseController.text.trim(),
+        date: dateController.text.trim(),
+        dispositionNote: dispositionController.text.trim(),
+      );
+      await widget.services.records.addCriminalHistory(
+        context: widget.services.session,
+        history: history,
+      );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Criminal history record added and logged to the audit chain.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save criminal history: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final criminal = _criminal;
@@ -299,25 +763,33 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                       for (final text in _texts) _textRecord(text),
                       const SizedBox(height: 22),
                     ],
-                    if (_payments.isNotEmpty) ...[
-                      _section('Financial Transactions',
-                          Icons.account_balance_outlined),
-                      const SizedBox(height: 10),
+                    _financialHeader(),
+                    const SizedBox(height: 10),
+                    if (_payments.isEmpty)
+                      const Text('No financial transactions recorded.',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textMuted))
+                    else
                       for (final payment in _payments) _payment(payment),
-                      const SizedBox(height: 22),
-                    ],
-                    if (_calls.isNotEmpty) ...[
-                      _section('Call Detail Records', Icons.phone_outlined),
-                      const SizedBox(height: 10),
+                    const SizedBox(height: 22),
+                    _cdrHeader(),
+                    const SizedBox(height: 10),
+                    if (_calls.isEmpty)
+                      const Text('No call detail records recorded.',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textMuted))
+                    else
                       for (final call in _calls) _call(call),
-                      const SizedBox(height: 22),
-                    ],
-                    if (_history.isNotEmpty) ...[
-                      _section('Prior History', Icons.gavel_outlined),
-                      const SizedBox(height: 10),
+                    const SizedBox(height: 22),
+                    _historyHeader(),
+                    const SizedBox(height: 10),
+                    if (_history.isEmpty)
+                      const Text('No prior criminal history recorded.',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textMuted))
+                    else
                       for (final item in _history) _historyRow(item),
-                      const SizedBox(height: 22),
-                    ],
+                    const SizedBox(height: 22),
                     _caseNotesHeader(),
                     const SizedBox(height: 10),
                     if (_notes.isEmpty)
@@ -348,6 +820,45 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
             onPressed: _uploadMedia,
             icon: const Icon(Icons.upload_file_outlined, size: 17),
             label: const Text('Upload file/media'),
+          ),
+        ],
+      );
+
+  Widget _financialHeader() => Row(
+        children: [
+          Expanded(
+              child: _section(
+                  'Financial Transactions', Icons.account_balance_outlined)),
+          OutlinedButton.icon(
+            onPressed: _addFinancialTxn,
+            icon: const Icon(Icons.add_card, size: 17),
+            label: const Text('Add transaction'),
+          ),
+        ],
+      );
+
+  Widget _cdrHeader() => Row(
+        children: [
+          Expanded(
+              child: _section(
+                  'Call Detail Records', Icons.phone_outlined)),
+          OutlinedButton.icon(
+            onPressed: _addCdrRecord,
+            icon: const Icon(Icons.add_call, size: 17),
+            label: const Text('Add call record'),
+          ),
+        ],
+      );
+
+  Widget _historyHeader() => Row(
+        children: [
+          Expanded(
+              child: _section(
+                  'Prior History', Icons.gavel_outlined)),
+          OutlinedButton.icon(
+            onPressed: _addCriminalHistory,
+            icon: const Icon(Icons.history_edu_outlined, size: 17),
+            label: const Text('Add history record'),
           ),
         ],
       );
@@ -431,54 +942,87 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           itemBuilder: (_, i) {
             final item = _media[i];
             final isDoc = item.type == MediaType.DOCUMENT;
+            final isUploader = item.uploadedByInvestigatorId ==
+                widget.services.session.investigatorId;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: isDoc
-                      ? Container(
-                          width: 130,
-                          height: 130,
-                          color: AppColors.surfaceElevated,
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.description_outlined,
-                                  size: 40, color: AppColors.primary),
-                              const SizedBox(height: 8),
-                              Text(
-                                item.caption.replaceFirst(
-                                    'Investigator upload: ', ''),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: isDoc
+                          ? Container(
+                              width: 130,
+                              height: 130,
+                              color: AppColors.surfaceElevated,
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.all(8),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.description_outlined,
+                                      size: 40, color: AppColors.primary),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    item.caption.replaceFirst(
+                                        'Investigator upload: ', ''),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : (item.filePath.startsWith('assets/')
+                              ? Image.asset(
+                                  item.filePath,
+                                  width: 130,
+                                  height: 130,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _missingMedia(),
+                                )
+                              : Image.file(
+                                  File(item.filePath),
+                                  width: 130,
+                                  height: 130,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _missingMedia(),
+                                )),
+                    ),
+                    if (isUploader)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Material(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          shape: const CircleBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: Tooltip(
+                            message: 'Delete media',
+                            child: InkWell(
+                              key: Key('delete-media-${item.id}'),
+                              onTap: () => _deleteMedia(item),
+                              hoverColor:
+                                  AppColors.accentRose.withValues(alpha: 0.2),
+                              child: const Padding(
+                                padding: EdgeInsets.all(5),
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: AppColors.accentRose,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        )
-                      : (item.filePath.startsWith('assets/')
-                          ? Image.asset(
-                              item.filePath,
-                              width: 130,
-                              height: 130,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _missingMedia(),
-                            )
-                          : Image.file(
-                              File(item.filePath),
-                              width: 130,
-                              height: 130,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _missingMedia(),
-                            )),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 5),
                 SizedBox(

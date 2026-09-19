@@ -74,8 +74,9 @@ final class ActionNotPermittedException extends AppException {
   /// The capability that was requested and denied.
   final String attemptedAction;
 
-  ActionNotPermittedException(this.attemptedAction)
-      : super('The assistant is not permitted to perform "$attemptedAction". '
+  ActionNotPermittedException(this.attemptedAction, [String? message])
+      : super(message ??
+            'The assistant is not permitted to perform "$attemptedAction". '
             'It can only create case notes; criminal records and images can '
             'be changed by the investigator alone.');
 }

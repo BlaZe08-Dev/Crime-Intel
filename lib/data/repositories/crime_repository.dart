@@ -91,11 +91,28 @@ class CrimeRepository implements CaseNoteSink {
     });
   }
 
-  Future<List<MediaItem>> getMediaFor(String criminalId) {
+  Future<List<MediaItem>> getMediaFor(String criminalId, {bool includeDeleted = false}) {
     return _guard('load media', () async {
-      final rows = await _db.query('media_items',
-          where: 'criminalId = ?', whereArgs: [criminalId]);
+      final rows = await _db.query(
+        'media_items',
+        where: includeDeleted
+            ? 'criminalId = ?'
+            : 'criminalId = ? AND deletedAt IS NULL',
+        whereArgs: [criminalId],
+      );
       return rows.map(MediaItem.fromMap).toList();
+    });
+  }
+
+  Future<MediaItem?> getMediaItemById(String id, {bool includeDeleted = true}) {
+    return _guard('load media item $id', () async {
+      final rows = await _db.query(
+        'media_items',
+        where: includeDeleted ? 'id = ?' : 'id = ? AND deletedAt IS NULL',
+        whereArgs: [id],
+        limit: 1,
+      );
+      return rows.isEmpty ? null : MediaItem.fromMap(rows.first);
     });
   }
 
@@ -374,23 +391,93 @@ class CrimeRepository implements CaseNoteSink {
     required InvestigatorContext context,
     required MediaItem item,
   }) async {
+    final toSave = item.uploadedByInvestigatorId == 'system'
+        ? item.copyWith(uploadedByInvestigatorId: context.investigatorId)
+        : item;
     return _guard('save the image', () async {
-      await _db.insert('media_items', item.toMap());
+      await _db.insert('media_items', toSave.toMap());
       await _audit.log(
         context: context,
         action: LogAction.UPLOAD,
         targetType: 'MediaItem',
-        targetId: item.id,
-        payload: item.toMap(),
+        targetId: toSave.id,
+        payload: toSave.toMap(),
       );
       onEntityMutated?.call(
         'media_item',
-        item.id,
+        toSave.id,
         'UPSERT',
-        item.toMap(),
-        item.createdAt,
+        toSave.toMap(),
+        toSave.createdAt,
       );
-      return item;
+      return toSave;
+    });
+  }
+
+  /// Soft-deletes an uploaded media item.
+  ///
+  /// Restricted strictly to the investigator who uploaded it.
+  /// A delete attempt by any other investigator is rejected and logged as an unauthorized action.
+  Future<void> deleteMedia({
+    required InvestigatorContext context,
+    required String mediaId,
+  }) async {
+    final item = await getMediaItemById(mediaId, includeDeleted: true);
+    if (item == null) {
+      throw DataAccessException('Media item $mediaId does not exist.');
+    }
+    if (item.isDeleted) {
+      return; // Already soft-deleted
+    }
+
+    if (item.uploadedByInvestigatorId != context.investigatorId) {
+      await _audit.log(
+        context: context,
+        action: LogAction.DELETE,
+        targetType: 'MediaItem',
+        targetId: mediaId,
+        payload: {
+          'outcome': 'DENIED',
+          'reason': 'Only the uploading investigator can delete this media item.',
+          'attemptedBy': context.investigatorId,
+          'uploadedBy': item.uploadedByInvestigatorId,
+        },
+      );
+      throw ActionNotPermittedException(
+        'deleteMedia',
+        'Investigator ${context.investigatorId} is not permitted to delete media uploaded by ${item.uploadedByInvestigatorId}.',
+      );
+    }
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await _guard('soft-delete media item', () async {
+      await _db.update(
+        'media_items',
+        {'deletedAt': now},
+        where: 'id = ?',
+        whereArgs: [mediaId],
+      );
+      await _audit.log(
+        context: context,
+        action: LogAction.DELETE,
+        targetType: 'MediaItem',
+        targetId: mediaId,
+        payload: {
+          'outcome': 'SOFT_DELETED',
+          'previousState': item.toMap(),
+          'deletedAt': now,
+        },
+      );
+      onEntityMutated?.call(
+        'media_item',
+        mediaId,
+        'DELETE',
+        {
+          ...item.toMap(),
+          'deletedAt': now,
+        },
+        now,
+      );
     });
   }
 
@@ -469,6 +556,81 @@ class CrimeRepository implements CaseNoteSink {
         record.createdAt,
       );
       return record;
+    });
+  }
+
+  /// Adds a call detail record (investigator-gated).
+  Future<CdrRecord> addCdrRecord({
+    required InvestigatorContext context,
+    required CdrRecord record,
+  }) async {
+    return _guard('save call record', () async {
+      await _db.insert('cdr_records', record.toMap());
+      await _audit.log(
+        context: context,
+        action: LogAction.UPLOAD,
+        targetType: 'CdrRecord',
+        targetId: record.id,
+        payload: record.toMap(),
+      );
+      onEntityMutated?.call(
+        'cdr_record',
+        record.id,
+        'UPSERT',
+        record.toMap(),
+        record.ts,
+      );
+      return record;
+    });
+  }
+
+  /// Adds a financial transaction (investigator-gated).
+  Future<FinancialTxn> addFinancialTxn({
+    required InvestigatorContext context,
+    required FinancialTxn txn,
+  }) async {
+    return _guard('save financial transaction', () async {
+      await _db.insert('financial_txns', txn.toMap());
+      await _audit.log(
+        context: context,
+        action: LogAction.UPLOAD,
+        targetType: 'FinancialTxn',
+        targetId: txn.id,
+        payload: txn.toMap(),
+      );
+      onEntityMutated?.call(
+        'financial_txn',
+        txn.id,
+        'UPSERT',
+        txn.toMap(),
+        txn.ts,
+      );
+      return txn;
+    });
+  }
+
+  /// Adds a criminal history record (investigator-gated).
+  Future<CriminalHistory> addCriminalHistory({
+    required InvestigatorContext context,
+    required CriminalHistory history,
+  }) async {
+    return _guard('save criminal history', () async {
+      await _db.insert('criminal_history', history.toMap());
+      await _audit.log(
+        context: context,
+        action: LogAction.UPLOAD,
+        targetType: 'CriminalHistory',
+        targetId: history.id,
+        payload: history.toMap(),
+      );
+      onEntityMutated?.call(
+        'criminal_history',
+        history.id,
+        'UPSERT',
+        history.toMap(),
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      return history;
     });
   }
 }

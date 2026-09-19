@@ -91,6 +91,7 @@ Write 4–6 short fictional FIR/intel snippets, e.g.:
 - An intel note linking "Seth" (C-001 alias) to a shell company.
 - A surveillance note placing C-003 and C-005 at a Nashik warehouse.
 - A report mentioning a hawala channel tied to "Madam" (C-004).
+- A social media intelligence report linking "Chotu" (C-005) and "Madam" (C-004) via geolocated posts and contact numbers.
 
 Each snippet should embed extractable entities: **person names/aliases, phone numbers, vehicles, locations, org names** — so entity extraction + graph building have material.
 

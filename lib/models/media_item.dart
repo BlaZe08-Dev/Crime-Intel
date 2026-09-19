@@ -37,6 +37,8 @@ class MediaItem {
   final String? sourceItemId;
   final bool isSynthetic;
   final int createdAt;
+  final String uploadedByInvestigatorId;
+  final int? deletedAt;
 
   const MediaItem({
     required this.id,
@@ -47,7 +49,11 @@ class MediaItem {
     this.sourceItemId,
     this.isSynthetic = true,
     required this.createdAt,
+    this.uploadedByInvestigatorId = 'system',
+    this.deletedAt,
   });
+
+  bool get isDeleted => deletedAt != null;
 
   MediaItem copyWith({
     String? id,
@@ -58,6 +64,8 @@ class MediaItem {
     String? sourceItemId,
     bool? isSynthetic,
     int? createdAt,
+    String? uploadedByInvestigatorId,
+    int? deletedAt,
   }) {
     return MediaItem(
       id: id ?? this.id,
@@ -68,6 +76,9 @@ class MediaItem {
       sourceItemId: sourceItemId ?? this.sourceItemId,
       isSynthetic: isSynthetic ?? this.isSynthetic,
       createdAt: createdAt ?? this.createdAt,
+      uploadedByInvestigatorId:
+          uploadedByInvestigatorId ?? this.uploadedByInvestigatorId,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -81,6 +92,8 @@ class MediaItem {
       'sourceItemId': sourceItemId,
       'isSynthetic': isSynthetic ? 1 : 0,
       'createdAt': createdAt,
+      'uploadedByInvestigatorId': uploadedByInvestigatorId,
+      'deletedAt': deletedAt,
     };
   }
 
@@ -94,6 +107,9 @@ class MediaItem {
       sourceItemId: map['sourceItemId'] as String?,
       isSynthetic: (map['isSynthetic'] as num? ?? 1) == 1,
       createdAt: (map['createdAt'] as num).toInt(),
+      uploadedByInvestigatorId:
+          map['uploadedByInvestigatorId'] as String? ?? 'system',
+      deletedAt: (map['deletedAt'] as num?)?.toInt(),
     );
   }
 }

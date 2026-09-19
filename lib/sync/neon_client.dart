@@ -146,9 +146,13 @@ class NeonClient implements RemoteSyncTransport {
           is_synthetic INT NOT NULL DEFAULT 1,
           created_at BIGINT NOT NULL,
           synced_at BIGINT NOT NULL,
-          source_device_id TEXT
+          source_device_id TEXT,
+          uploaded_by_investigator_id TEXT NOT NULL DEFAULT 'system',
+          deleted_at BIGINT
         )
         ''',
+        'ALTER TABLE shared_media_items ADD COLUMN IF NOT EXISTS uploaded_by_investigator_id TEXT NOT NULL DEFAULT \'system\'',
+        'ALTER TABLE shared_media_items ADD COLUMN IF NOT EXISTS deleted_at BIGINT',
         'CREATE INDEX IF NOT EXISTS idx_shared_media_items_synced ON shared_media_items (synced_at)',
         '''
         CREATE TABLE IF NOT EXISTS shared_text_records (
@@ -282,13 +286,16 @@ class NeonClient implements RemoteSyncTransport {
               Sql.named('''
                 INSERT INTO shared_media_items (
                   id, criminal_id, type, file_path, caption, source_item_id,
-                  is_synthetic, created_at, synced_at, source_device_id
+                  is_synthetic, created_at, synced_at, source_device_id,
+                  uploaded_by_investigator_id, deleted_at
                 ) VALUES (
                   @id, @criminalId, @type, @filePath, @caption, @sourceItemId,
-                  @isSynthetic, @createdAt, @syncedAt, @sourceDeviceId
+                  @isSynthetic, @createdAt, @syncedAt, @sourceDeviceId,
+                  @uploadedByInvestigatorId, @deletedAt
                 )
                 ON CONFLICT (id) DO UPDATE SET
                   caption = EXCLUDED.caption,
+                  deleted_at = EXCLUDED.deleted_at,
                   synced_at = EXCLUDED.synced_at,
                   source_device_id = EXCLUDED.source_device_id
               '''),
@@ -303,6 +310,9 @@ class NeonClient implements RemoteSyncTransport {
                 'createdAt': data['createdAt'],
                 'syncedAt': serverTs,
                 'sourceDeviceId': deviceId,
+                'uploadedByInvestigatorId':
+                    data['uploadedByInvestigatorId'] ?? 'system',
+                'deletedAt': data['deletedAt'],
               },
             );
           } else if (item.entityType == 'text_record') {
@@ -480,7 +490,8 @@ class NeonClient implements RemoteSyncTransport {
       final mediaRes = await conn.execute(
         Sql.named('''
           SELECT id, criminal_id, type, file_path, caption, source_item_id,
-                 is_synthetic, created_at, synced_at
+                 is_synthetic, created_at, synced_at,
+                 uploaded_by_investigator_id, deleted_at
           FROM shared_media_items
           WHERE synced_at > @lastTs
           ORDER BY synced_at ASC
@@ -503,6 +514,9 @@ class NeonClient implements RemoteSyncTransport {
           sourceItemId: row['source_item_id'] as String?,
           isSynthetic: (row['is_synthetic'] as num).toInt() == 1,
           createdAt: (row['created_at'] as num).toInt(),
+          uploadedByInvestigatorId:
+              row['uploaded_by_investigator_id'] as String? ?? 'system',
+          deletedAt: (row['deleted_at'] as num?)?.toInt(),
         ));
       }
 

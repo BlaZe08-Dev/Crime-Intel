@@ -360,6 +360,16 @@ class SeedData {
           'settled in cash by a third party.',
       createdAt: baseTime + 86400000 * 4,
     ),
+    const TextRecord(
+      id: 'SOC-2023-0511',
+      criminalId: 'C-005',
+      kind: TextRecordKind.SOCIAL_MEDIA,
+      title: 'OSINT Intercept: Telegram & Social Media Intelligence',
+      body: 'Open-source social media intelligence intercept: Imran Shaikh (alias Chotu, C-005) '
+          'posted geolocated media from Thane referencing logistics coordination for Sunita Rao (alias Madam, C-004). '
+          'Monitored channel listed secondary contact number +91-98765-43210 for regional courier pickups.',
+      createdAt: baseTime + 86400000 * 18,
+    ),
   ];
 
   static final List<MediaItem> mediaItems = [
@@ -371,6 +381,7 @@ class SeedData {
       caption: 'Synthetic Mugshot: Devraj Malhotra (C-001)',
       isSynthetic: true,
       createdAt: baseTime,
+      uploadedByInvestigatorId: 'system',
     ),
     const MediaItem(
       id: 'MEDIA-002',
@@ -380,6 +391,7 @@ class SeedData {
       caption: 'Synthetic Mugshot: Farhan Qureshi (C-002)',
       isSynthetic: true,
       createdAt: baseTime,
+      uploadedByInvestigatorId: 'system',
     ),
     const MediaItem(
       id: 'MEDIA-003',
@@ -389,6 +401,7 @@ class SeedData {
       caption: 'Synthetic Mugshot: Ravi Deshmukh (C-003)',
       isSynthetic: true,
       createdAt: baseTime,
+      uploadedByInvestigatorId: 'system',
     ),
     const MediaItem(
       id: 'MEDIA-004',
@@ -398,6 +411,7 @@ class SeedData {
       caption: 'Synthetic Mugshot: Sunita Rao (C-004)',
       isSynthetic: true,
       createdAt: baseTime,
+      uploadedByInvestigatorId: 'system',
     ),
     const MediaItem(
       id: 'MEDIA-005',
@@ -407,6 +421,7 @@ class SeedData {
       caption: 'Synthetic Mugshot: Imran Shaikh (C-005)',
       isSynthetic: true,
       createdAt: baseTime,
+      uploadedByInvestigatorId: 'system',
     ),
     const MediaItem(
       id: 'MEDIA-SCENE-001',
@@ -416,6 +431,7 @@ class SeedData {
       caption: 'Nashik Warehouse Depot Interior (Evidence Scene)',
       isSynthetic: true,
       createdAt: baseTime + 86400000 * 9,
+      uploadedByInvestigatorId: 'system',
     ),
     const MediaItem(
       id: 'MEDIA-SCENE-002',
@@ -425,6 +441,7 @@ class SeedData {
       caption: 'Cash Counting Desk and Ledger Confiscation',
       isSynthetic: true,
       createdAt: baseTime + 86400000 * 23,
+      uploadedByInvestigatorId: 'system',
     ),
     const MediaItem(
       id: 'MEDIA-BLURRY-001',
@@ -434,6 +451,7 @@ class SeedData {
       caption: 'Blurry Night Surveillance Frame (Candidate for Enhancement)',
       isSynthetic: true,
       createdAt: baseTime + 86400000 * 14,
+      uploadedByInvestigatorId: 'system',
     ),
   ];
 

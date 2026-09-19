@@ -20,6 +20,7 @@ import 'support/fake_llm_client.dart';
 class FakeRemoteSyncTransport implements RemoteSyncTransport {
   final Map<String, Criminal> criminals = {};
   final Map<String, CaseNote> caseNotes = {};
+  final Map<String, MediaItem> mediaItems = {};
   final List<CanonicalAuditEntry> canonicalLogs = [];
 
   int currentServerTime = 10000;
@@ -48,6 +49,8 @@ class FakeRemoteSyncTransport implements RemoteSyncTransport {
         criminals[item.entityId] = Criminal.fromMap(data);
       } else if (item.entityType == 'case_note') {
         caseNotes[item.entityId] = CaseNote.fromMap(data);
+      } else if (item.entityType == 'media_item') {
+        mediaItems[item.entityId] = MediaItem.fromMap(data);
       } else if (item.entityType == 'audit_entry') {
         final nextSeq = canonicalLogs.length + 1;
         final prevHash = canonicalLogs.isEmpty
@@ -103,6 +106,7 @@ class FakeRemoteSyncTransport implements RemoteSyncTransport {
     return RemoteSyncPullResult(
       criminals: criminals.values.toList(),
       caseNotes: caseNotes.values.toList(),
+      mediaItems: mediaItems.values.toList(),
       maxServerTs: currentServerTime,
     );
   }

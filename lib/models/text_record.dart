@@ -2,7 +2,8 @@ enum TextRecordKind {
   FIR,
   INTEL,
   SURVEILLANCE_NOTE,
-  REPORT;
+  REPORT,
+  SOCIAL_MEDIA;
 
   String get displayName {
     switch (this) {
@@ -14,6 +15,8 @@ enum TextRecordKind {
         return 'Surveillance Note';
       case TextRecordKind.REPORT:
         return 'Case Report';
+      case TextRecordKind.SOCIAL_MEDIA:
+        return 'Social Media Intelligence';
     }
   }
 
