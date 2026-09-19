@@ -79,6 +79,7 @@ the time of this document update.
 - Face recognition / webcam capture / face-embedding authentication — descoped for the hackathon deadline; the OTP seam remains the supported auth path.
 - News search and attachment UI — descoped for the hackathon deadline; the documented `ATTACH_NEWS` repository/audit seam remains for future work.
 - Image enhancement (Real-ESRGAN/GFPGAN) — descoped for the hackathon deadline; the enhancement disclaimer seam remains for future work.
+- Password recovery / "forgot password" is not implemented for this deadline.
 - Registration is intentionally open for this hackathon build: any address that receives an OTP can enroll. A production version would restrict enrollment to a vetted allowlist.
 - **Demo-mode OTP fallback:** when `DEMO_MODE=true`, or Resend delivery fails, the generated OTP is displayed in the registration UI and the audit entry is marked `demo fallback, not emailed`. This keeps a deadline demo usable but is not appropriate for production authentication.
 

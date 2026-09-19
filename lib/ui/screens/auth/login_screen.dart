@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/di/app_services.dart';
@@ -18,9 +20,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   final _otp = TextEditingController();
   bool _registering = false, _otpSent = false, _busy = false;
+  Timer? _resendCooldown;
+  int _resendSeconds = 0;
   String? _message;
   @override
   void dispose() {
+    _resendCooldown?.cancel();
     _email.dispose();
     _password.dispose();
     _otp.dispose();
@@ -34,16 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       if (_registering && !_otpSent) {
-        final delivery =
-            await widget.services.auth.requestRegistrationOtp(_email.text);
-        if (mounted) {
-          setState(() {
-            _otpSent = true;
-            _message = delivery.isDemoFallback
-                ? 'Demo mode: your code is ${delivery.demoCode}. It expires in one minute.'
-                : 'Code sent. It expires in one minute.';
-          });
-        }
+        await _requestRegistrationOtp();
       } else if (_registering) {
         await widget.services.auth.verifyAndCreatePassword(
             rawEmail: _email.text, code: _otp.text, password: _password.text);
@@ -67,6 +63,51 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _resendOtp() async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      await _requestRegistrationOtp();
+    } on AppException catch (error) {
+      if (mounted) setState(() => _message = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+            () => _message = 'Unable to resend the code. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _requestRegistrationOtp() async {
+    final delivery =
+        await widget.services.auth.requestRegistrationOtp(_email.text);
+    if (!mounted) return;
+    setState(() {
+      _otpSent = true;
+      _message = delivery.isDemoFallback
+          ? 'Demo mode: your code is ${delivery.demoCode}. It expires in one minute.'
+          : 'Code sent. It expires in one minute.';
+    });
+    _startResendCooldown();
+  }
+
+  void _startResendCooldown() {
+    _resendCooldown?.cancel();
+    setState(() => _resendSeconds = 30);
+    _resendCooldown = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _resendSeconds <= 1) {
+        timer.cancel();
+        if (mounted) setState(() => _resendSeconds = 0);
+        return;
+      }
+      setState(() => _resendSeconds--);
+    });
   }
 
   void _enterApp() => Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -108,7 +149,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             keyboardType: TextInputType.number,
                             maxLength: 6,
                             decoration: const InputDecoration(
-                                labelText: '6-digit verification code'))
+                                labelText: '6-digit verification code')),
+                        Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(
+                                onPressed: _busy || _resendSeconds > 0
+                                    ? null
+                                    : _resendOtp,
+                                child: Text(_resendSeconds > 0
+                                    ? 'Resend code (${_resendSeconds}s)'
+                                    : 'Resend code')))
                       ],
                       if (!_registering || _otpSent) ...[
                         const SizedBox(height: 12),
@@ -149,6 +199,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     _registering = !_registering;
                                     _otpSent = false;
                                     _message = null;
+                                    _resendSeconds = 0;
+                                    _resendCooldown?.cancel();
                                   }),
                           child: Text(_registering
                               ? 'Already have an account? Sign in'
