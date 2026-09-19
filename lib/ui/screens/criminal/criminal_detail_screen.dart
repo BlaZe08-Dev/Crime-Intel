@@ -12,6 +12,7 @@ import '../../../models/structured_records.dart';
 import '../../../models/text_record.dart';
 import '../../../core/utils/id_generator.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/sync_status_badge.dart';
 
 /// A single criminal's record (`docs/AppFlow.md` §4).
 ///
@@ -86,17 +87,25 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       label: 'Images',
       extensions: ['jpg', 'jpeg', 'png', 'webp'],
     );
-    final file = await openFile(acceptedTypeGroups: [imageTypes]);
+    const docTypes = XTypeGroup(
+      label: 'Documents',
+      extensions: ['pdf', 'txt', 'doc', 'docx', 'md', 'json', 'csv'],
+    );
+    final file = await openFile(acceptedTypeGroups: [imageTypes, docTypes]);
     if (file == null || !mounted) return;
+
+    final ext = file.name.split('.').last.toLowerCase();
+    final isDoc = ['pdf', 'txt', 'doc', 'docx', 'md', 'json', 'csv'].contains(ext);
+    final mediaType = isDoc ? MediaType.DOCUMENT : MediaType.PHOTO;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Add media to this record?'),
+        title: Text('Add ${isDoc ? 'document' : 'media'} to this record?'),
         content: Text(
           'The selected file will be registered against ${widget.criminalId} '
-          'and logged in the immutable audit trail. Only synthetic media may '
-          'be added to CrimeIntel.\n\n${file.name}',
+          'and logged in the immutable audit trail. Saved to local storage immediately '
+          'and queued for central synchronization.\n\n${file.name}',
         ),
         actions: [
           TextButton(
@@ -105,7 +114,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Confirm synthetic upload'),
+            child: const Text('Confirm upload'),
           ),
         ],
       ),
@@ -118,7 +127,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
         item: MediaItem(
           id: IdGenerator.generate('MEDIA'),
           criminalId: widget.criminalId,
-          type: MediaType.PHOTO,
+          type: mediaType,
           filePath: file.path,
           caption: 'Investigator upload: ${file.name}',
           isSynthetic: true,
@@ -128,12 +137,115 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Media uploaded and added to the audit log.')),
+        SnackBar(content: Text('${mediaType.displayName} uploaded and added to the audit log.')),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not upload media: $error')),
+      );
+    }
+  }
+
+  Future<void> _addCaseNote() async {
+    final textController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.note_add_outlined, color: AppColors.primary, size: 22),
+            SizedBox(width: 10),
+            Text('Add Case Note / Detail',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 460,
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Record new investigative intelligence or observations regarding ${_criminal?.name ?? widget.criminalId}. '
+                  'Saves to local SQLite immediately (fully offline) and logs in the local audit chain.',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: textController,
+                  maxLines: 5,
+                  autofocus: true,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                  decoration: const InputDecoration(
+                    hintText: 'Enter case details, observations, notes, or tips...',
+                    hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    filled: true,
+                    fillColor: AppColors.surfaceCard,
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Note content cannot be empty.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            icon: const Icon(Icons.save_outlined, size: 16),
+            label: const Text('Save Note'),
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogCtx, true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final text = textController.text.trim();
+    if (text.isEmpty) return;
+
+    try {
+      await widget.services.records.writeCaseNote(
+        context: widget.services.session,
+        criminalId: widget.criminalId,
+        text: text,
+      );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Case note saved and logged to the audit chain.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save case note: $error')),
       );
     }
   }
@@ -147,6 +259,12 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       appBar: AppBar(
         title: Text(criminal?.name ?? widget.criminalId),
         backgroundColor: AppColors.surface,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: SyncStatusBadge(compact: false),
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -192,7 +310,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                       for (final item in _history) _historyRow(item),
                       const SizedBox(height: 22),
                     ],
-                    _section('Case Notes', Icons.sticky_note_2_outlined),
+                    _caseNotesHeader(),
                     const SizedBox(height: 10),
                     if (_notes.isEmpty)
                       const Text('No case notes yet.',
@@ -215,11 +333,25 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
 
   Widget _mediaHeader() => Row(
         children: [
-          Expanded(child: _section('Media', Icons.image_outlined)),
+          Expanded(
+              child: _section('Media & Documents', Icons.perm_media_outlined)),
           OutlinedButton.icon(
             onPressed: _uploadMedia,
             icon: const Icon(Icons.upload_file_outlined, size: 17),
-            label: const Text('Upload media'),
+            label: const Text('Upload file/media'),
+          ),
+        ],
+      );
+
+  Widget _caseNotesHeader() => Row(
+        children: [
+          Expanded(
+              child: _section(
+                  'Case Notes & Details', Icons.sticky_note_2_outlined)),
+          OutlinedButton.icon(
+            onPressed: _addCaseNote,
+            icon: const Icon(Icons.add_comment_outlined, size: 17),
+            label: const Text('Add case note'),
           ),
         ],
       );
@@ -289,26 +421,55 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           separatorBuilder: (_, __) => const SizedBox(width: 12),
           itemBuilder: (_, i) {
             final item = _media[i];
+            final isDoc = item.type == MediaType.DOCUMENT;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: item.filePath.startsWith('assets/')
-                      ? Image.asset(
-                          item.filePath,
+                  child: isDoc
+                      ? Container(
                           width: 130,
                           height: 130,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _missingMedia(),
+                          color: AppColors.surfaceElevated,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.all(8),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.description_outlined,
+                                  size: 40, color: AppColors.primary),
+                              const SizedBox(height: 8),
+                              Text(
+                                item.caption.replaceFirst(
+                                    'Investigator upload: ', ''),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
                         )
-                      : Image.file(
-                          File(item.filePath),
-                          width: 130,
-                          height: 130,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _missingMedia(),
-                        ),
+                      : (item.filePath.startsWith('assets/')
+                          ? Image.asset(
+                              item.filePath,
+                              width: 130,
+                              height: 130,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _missingMedia(),
+                            )
+                          : Image.file(
+                              File(item.filePath),
+                              width: 130,
+                              height: 130,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _missingMedia(),
+                            )),
                 ),
                 const SizedBox(height: 5),
                 SizedBox(

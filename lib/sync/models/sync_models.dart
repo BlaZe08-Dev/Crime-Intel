@@ -113,20 +113,31 @@ class SyncStatus {
     if (!isConfigured) return 'Local Only (Neon unconfigured)';
     if (isSyncing) return 'Syncing with Neon...';
     if (!isOnline) {
-      return pendingCount > 0
-          ? 'Offline — $pendingCount saved locally'
-          : 'Offline — changes saved locally';
+      if (pendingCount > 0) {
+        return 'Offline — saved locally, will sync later';
+      }
+      if (lastSyncTime != null) {
+        return 'Offline — Last synced ${_formatRelativeTime(lastSyncTime!)}';
+      }
+      return 'Offline — saved locally, will sync later';
     }
     if (pendingCount > 0) {
-      return '$pendingCount items pending sync';
+      return pendingCount == 1
+          ? '1 item pending sync'
+          : '$pendingCount items pending sync';
     }
     if (lastSyncTime != null) {
-      final diff = DateTime.now().difference(lastSyncTime!);
-      if (diff.inSeconds < 60) return 'Synced just now';
-      if (diff.inMinutes < 60) return 'Synced ${diff.inMinutes}m ago';
-      return 'Synced ${diff.inHours}h ago';
+      return 'Last synced ${_formatRelativeTime(lastSyncTime!)}';
     }
-    return 'Online — synced with Neon';
+    return 'Awaiting initial sync';
+  }
+
+  static String _formatRelativeTime(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${time.month}/${time.day} ${time.hour}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
 

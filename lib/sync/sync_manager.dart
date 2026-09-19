@@ -47,6 +47,7 @@ class SyncManager {
 
   late final ValueNotifier<SyncStatus> statusNotifier;
   StreamSubscription<bool>? _networkSub;
+  Timer? _periodicSyncTimer;
 
   SyncManager({
     required Database db,
@@ -112,6 +113,13 @@ class SyncManager {
     });
 
     _updateStatus();
+
+    // Periodic sync check every 2 minutes (non-aggressive)
+    _periodicSyncTimer = Timer.periodic(const Duration(minutes: 2), (_) {
+      if (_networkChecker.isOnline && _transport.isConfigured && !_isSyncing) {
+        unawaited(syncNow());
+      }
+    });
 
     // Initial opportunistic sync attempt if configured
     if (_networkChecker.isOnline && _transport.isConfigured) {
@@ -319,6 +327,7 @@ class SyncManager {
 
   void dispose() {
     _networkSub?.cancel();
+    _periodicSyncTimer?.cancel();
     statusNotifier.dispose();
   }
 }

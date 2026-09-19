@@ -8,6 +8,7 @@ import 'package:crime_intel/core/di/app_services.dart';
 import 'package:crime_intel/data/db/database_helper.dart';
 import 'package:crime_intel/models/case_note.dart';
 import 'package:crime_intel/models/criminal.dart';
+import 'package:crime_intel/models/media_item.dart';
 import 'package:crime_intel/rag/rag_service.dart';
 import 'package:crime_intel/sync/models/sync_models.dart';
 import 'package:crime_intel/sync/network_checker.dart';
@@ -394,6 +395,142 @@ void main() {
       // 5. Verify system prompt rule 7 explicitly prohibits citing investigator identities
       expect(RagService.systemPrompt, contains('Anonymized Attribution'));
       expect(RagService.systemPrompt, contains('Never cite, name, or state which investigator'));
+    });
+  });
+
+  group('Honest Sync Status Reporting', () {
+    test('displays accurate and honest labels without false claims', () {
+      // 1. Offline with pending items
+      const offlinePending = SyncStatus(
+        isConfigured: true,
+        isOnline: false,
+        isSyncing: false,
+        pendingCount: 3,
+        lastSyncTime: null,
+      );
+      expect(offlinePending.label, 'Offline — saved locally, will sync later');
+
+      // 2. Online with pending items
+      const onlinePending = SyncStatus(
+        isConfigured: true,
+        isOnline: true,
+        isSyncing: false,
+        pendingCount: 2,
+        lastSyncTime: null,
+      );
+      expect(onlinePending.label, '2 items pending sync');
+
+      // Single item singular formatting
+      const singlePending = SyncStatus(
+        isConfigured: true,
+        isOnline: true,
+        isSyncing: false,
+        pendingCount: 1,
+        lastSyncTime: null,
+      );
+      expect(singlePending.label, '1 item pending sync');
+
+      // 3. Online with successful prior sync
+      final now = DateTime.now();
+      final onlineSynced = SyncStatus(
+        isConfigured: true,
+        isOnline: true,
+        isSyncing: false,
+        pendingCount: 0,
+        lastSyncTime: now.subtract(const Duration(minutes: 5)),
+      );
+      expect(onlineSynced.label, 'Last synced 5m ago');
+
+      // 4. Online with 0 pending but never synced yet (never claim synced when it isn't!)
+      const onlineNeverSynced = SyncStatus(
+        isConfigured: true,
+        isOnline: true,
+        isSyncing: false,
+        pendingCount: 0,
+        lastSyncTime: null,
+      );
+      expect(onlineNeverSynced.label, 'Awaiting initial sync');
+      expect(onlineNeverSynced.label, isNot(contains('synced with Neon')));
+
+      // 5. Sync in progress
+      const syncing = SyncStatus(
+        isConfigured: true,
+        isOnline: true,
+        isSyncing: true,
+        pendingCount: 1,
+        lastSyncTime: null,
+      );
+      expect(syncing.label, 'Syncing with Neon...');
+    });
+  });
+
+  group('Add-Data UI & Storage via CrimeRepository', () {
+    test('adding documents, photos, and free-text notes saves to SQLite immediately, logs locally, and enqueues for sync', () async {
+      // Seed a criminal record first
+      const criminal = Criminal(
+        id: 'C-ADD-01',
+        name: 'Target Subject',
+        aliases: ['TS'],
+        dob: '1992-04-10',
+        gender: 'Male',
+        knownFor: 'Smuggling',
+        status: CriminalStatus.UNDER_WATCH,
+        lastKnownLoc: 'Harbor Gate',
+        riskLevel: RiskLevel.HIGH,
+        createdAt: 1000,
+        updatedAt: 1000,
+      );
+      await services.records.addCriminal(
+        context: services.session,
+        criminal: criminal,
+      );
+
+      final initialPending = services.syncManager.status.pendingCount;
+
+      // 1. Add Document media item
+      final docItem = MediaItem(
+        id: 'DOC-001',
+        criminalId: 'C-ADD-01',
+        type: MediaType.DOCUMENT,
+        filePath: '/storage/docs/seizure_manifest.pdf',
+        caption: 'Investigator upload: seizure_manifest.pdf',
+        isSynthetic: true,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await services.records.addMedia(
+        context: services.session,
+        item: docItem,
+      );
+
+      // Verify immediate local SQLite availability
+      final mediaList = await services.records.getMediaFor('C-ADD-01');
+      expect(mediaList.any((m) => m.id == 'DOC-001'), isTrue);
+      expect(mediaList.firstWhere((m) => m.id == 'DOC-001').type, MediaType.DOCUMENT);
+
+      // 2. Add free-text case note / detail
+      final note = await services.records.writeCaseNote(
+        context: services.session,
+        criminalId: 'C-ADD-01',
+        text: 'Informant confirmed vehicle registration number DL-04-AB-1234 at the scene.',
+      );
+
+      // Verify immediate local SQLite availability
+      final notesList = await services.records.getCaseNotesFor('C-ADD-01');
+      expect(notesList.any((n) => n.id == note.id), isTrue);
+      expect(notesList.firstWhere((n) => n.id == note.id).text, contains('DL-04-AB-1234'));
+
+      // 3. Verify local audit trail records both actions
+      final recentLogs = await services.audit.getRecentLogs(limit: 10);
+      expect(recentLogs.any((l) => l.targetId == 'DOC-001' && l.action == LogAction.UPLOAD), isTrue);
+      expect(recentLogs.any((l) => l.targetId == note.id && l.action == LogAction.CREATE_CASENOTE), isTrue);
+
+      // 4. Verify local hash chain is completely valid
+      final verification = await services.verifier.verifyChain();
+      expect(verification.isValid, isTrue);
+
+      // 5. Verify pending queue incremented for outbound sync
+      final updatedPending = services.syncManager.status.pendingCount;
+      expect(updatedPending, greaterThan(initialPending));
     });
   });
 }

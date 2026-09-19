@@ -122,6 +122,12 @@ class AppServices {
         syncTransport ?? NeonClient(connectionUrl: AppConfig.neonDatabaseUrl);
 
     final graphService = GraphService(records: records, graph: graphStore);
+    final ragIndexer = RagIndexer(
+      records: records,
+      vectors: vectors,
+      audit: audit,
+      llm: llm,
+    );
 
     final syncManager = SyncManager(
       db: db,
@@ -130,11 +136,19 @@ class AppServices {
       deviceId: devId,
       onDataPulled: () async {
         await graphService.rebuild();
+        try {
+          await ragIndexer.rebuild(context: const SystemContext());
+        } catch (_) {
+          // If Ollama/embedding is offline, do not abort sync
+        }
       },
     );
 
     // Wire sync event handlers so local audited writes automatically queue for sync
     audit.onEntryLogged = (entry, effectivePayload) {
+      // Local search/vector indexing is derived cache and should not sync to central log
+      if (entry.targetType == 'VectorIndex') return;
+
       syncManager.enqueue(
         entityType: 'audit_entry',
         entityId: 'LOG-${entry.seq}',
@@ -170,12 +184,7 @@ class AppServices {
       ingestion: IngestionService(db: db, audit: audit),
       llm: llm,
       rag: rag,
-      indexer: RagIndexer(
-        records: records,
-        vectors: vectors,
-        audit: audit,
-        llm: llm,
-      ),
+      indexer: ragIndexer,
       guard: guard,
       assistant: AssistantService(
         rag: rag,

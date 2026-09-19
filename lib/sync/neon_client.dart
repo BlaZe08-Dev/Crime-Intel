@@ -60,17 +60,24 @@ class NeonClient implements RemoteSyncTransport {
       throw const DataAccessException('Neon connection URL is invalid or unset.');
     }
 
+    const settings = ConnectionSettings(
+      sslMode: SslMode.require,
+      connectTimeout: Duration(seconds: 30),
+      queryTimeout: Duration(seconds: 45),
+    );
+
     try {
-      return await Connection.open(
-        endpoint,
-        settings: const ConnectionSettings(
-          sslMode: SslMode.require,
-          connectTimeout: Duration(seconds: 10),
-          queryTimeout: Duration(seconds: 30),
-        ),
-      );
+      return await Connection.open(endpoint, settings: settings);
     } catch (e) {
-      throw DataAccessException('Could not connect to Neon database: $e', cause: e);
+      // Retry once after a brief pause in case serverless compute is waking up
+      try {
+        await Future<void>.delayed(const Duration(milliseconds: 750));
+        return await Connection.open(endpoint, settings: settings);
+      } catch (retryError) {
+        throw DataAccessException(
+            'Could not connect to Neon database: $retryError',
+            cause: retryError);
+      }
     }
   }
 
