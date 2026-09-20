@@ -132,12 +132,14 @@
 | 6.4 | `flutter build linux` → package + setup steps | 🤖 | ☑ |
 | 6.5 | Final demo dry-run | 🧑 | ☐ |
 
-- 6.4 — **Packaged Release & Setup Verified 2026-09-20:** `flutter build linux --release`
+- 6.4 — **Multi-Distro Packaging & Setup Verified 2026-09-20:** `flutter build linux --release`
   built cleanly. Created one-step idempotent setup automation in `scripts/setup.sh`
   (checks/installs Ollama, pulls `granite4.1:3b` and `nomic-embed-text`, checks Flutter,
-  and manages `.env`), bundled comprehensive `INSTALL.md` and `.env.example`, and
-  packaged standalone release archive `crime-intel-linux-x64-v1.0.0.tar.gz`. Release
-  artifact tagged and published to GitHub.
+  and manages `.env`). Built automated packaging pipeline in `scripts/build_packages.sh`
+  producing: (1) `crime-intel_1.0.0_amd64.deb` for Debian/Ubuntu with desktop integration,
+  (2) `CrimeIntel-1.0.0-x86_64.AppImage` for universal Linux distros, and (3)
+  `crime-intel-linux-x64-v1.0.0.tar.gz` as universal fallback. All artifacts tagged
+  and published to GitHub Releases.
 
 ---
 

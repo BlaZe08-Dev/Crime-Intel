@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=CrimeIntel
+GenericName=Criminal Network Analysis System
+Comment=AI-powered criminal network analysis and multi-source intelligence link analysis
+Exec=crime-intel %U
+Icon=crime-intel
+Terminal=false
+Type=Application
+Categories=Utility;Security;Science;
+Keywords=crime;intelligence;analysis;network;graph;investigation;
+StartupWMClass=crime_intel
