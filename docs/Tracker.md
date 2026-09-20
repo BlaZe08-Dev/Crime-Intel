@@ -38,8 +38,9 @@
 | 1.5 | ⚠ Measure end-to-end latency on the real machine | 🧑 | ◐ |
 | 1.x | (Experimental) GPU acceleration | 🧑 | ☐ |
 
-- 1.1 — Ollama 0.33.2 installed. `granite4.1:3b` (2.1 GB) and
-  `nomic-embed-text` (274 MB, 768-dim) pulled and verified responding.
+- 1.1 — Ollama and its two required models were previously verified on the
+  development machine. Release installs now install only Ollama; the app owns
+  first-launch model download, progress, retry and exact-tag verification.
 - 1.5 — Measured directly against the Ollama API on this machine: **59 s cold**
   (first call, model load included), **4.3 s warm** for a short tool-calling
   prompt. Full retrieve→answer latency inside the app still needs measuring
@@ -131,11 +132,14 @@
 | 6.3 | Polish + demo script + write-up (blind-safe) | 🤖 | ☐ |
 | 6.4 | `flutter build linux` → package + setup steps | 🤖 | ☑ |
 | 6.5 | Final demo dry-run | 🧑 | ☐ |
+| 6.6 | Clean Debian/Ubuntu install + first-launch model-bootstrap verification | 🧑 | ◐ |
 
 - 6.4 — **Multi-Distro Packaging & Setup Verified 2026-09-20:** `flutter build linux --release`
-  built cleanly. Created one-step idempotent setup automation in `scripts/setup.sh`
-  (checks/installs Ollama, pulls `granite4.1:3b` and `nomic-embed-text`, checks Flutter,
-  and manages `.env`). Built automated packaging pipeline in `scripts/build_packages.sh`
+  built cleanly. The current packaging source makes the `.deb` install Ollama
+  only (with `curl`/CA dependencies and daemon readiness check); all formats
+  download models in the app at first launch. `scripts/setup.sh` installs
+  Ollama only, checks Flutter, and manages `.env`. The new clean-container and
+  live bootstrap verification remains ◐ until it is actually executed. Built automated packaging pipeline in `scripts/build_packages.sh`
   producing: (1) `crime-intel_1.0.0_amd64.deb` for Debian/Ubuntu with desktop integration,
   (2) `CrimeIntel-1.0.0-x86_64.AppImage` for universal Linux distros, and (3)
   `crime-intel-linux-x64-v1.0.0.tar.gz` as universal fallback. All artifacts tagged
@@ -156,6 +160,7 @@
 | `ATTACH_NEWS` | ◐ | repository method ready; no news feature to call it |
 | `LOGIN_OK` / `LOGIN_FAIL` / `OTP_SENT` / `OTP_OK` / `PASSWORD_RESET` | ◐ | auth flow in source; awaiting executable tests |
 | `ENHANCE_IMAGE` | ☐ | needs Phase 5 enhancement |
+| `MODEL_PULL_STARTED` / `MODEL_PULL_COMPLETED` / `MODEL_PULL_FAILED` | ◐ | first-launch bootstrap source; clean-environment verification pending |
 
 The four unwired actions have no feature behind them yet. Emitting them now
 would mean logging events that never happened, which is worse than the gap.

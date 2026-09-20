@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
+import '../../llm/model_bootstrap.dart';
+
 /// Runtime configuration.
 ///
 /// `docs/Rules.md` §17 requires the LLM base URL to be configuration rather
@@ -33,8 +35,8 @@ abstract final class AppConfig {
 
   // Defaults must stay in sync with .env.example.
   static const String _defaultOllamaBaseUrl = 'http://localhost:11434';
-  static const String _defaultChatModel = 'granite4.1:3b';
-  static const String _defaultEmbedModel = 'nomic-embed-text';
+  static const String _defaultChatModel = RequiredOllamaModels.chat;
+  static const String _defaultEmbedModel = RequiredOllamaModels.embedding;
 
   static Future<void> load() async {
     if (_loaded) return;

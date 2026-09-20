@@ -167,7 +167,8 @@ class OllamaClient implements LlmClient {
   String _describeHttpFailure(http.Response response, String model) {
     final raw = response.body.toLowerCase();
     if (raw.contains('not found') || raw.contains('no such model')) {
-      return 'Model "$model" is not installed. Run:  ollama pull $model';
+      return 'Model "$model" is not installed. Restart CrimeIntel to download '
+          'the required models automatically.';
     }
     if (raw.contains('memory')) {
       return 'The model server ran out of memory loading "$model". '

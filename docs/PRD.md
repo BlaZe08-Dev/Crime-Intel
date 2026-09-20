@@ -65,7 +65,10 @@ the time of this document update.
 
 - **Linux desktop, Flutter.**
 - **Local-first LLM** (Ollama 3B) — no hosted-API rate limits or per-token cost.
-  Network access is needed for email-OTP delivery; news search is future work.
+  Debian installs require network access to install Ollama; the required local
+  models (~2.5 GB) download automatically with visible progress on first app
+  launch and are never release assets. Network access is also needed for
+  email-OTP delivery; news search is future work.
 - **Synthetic data only.** No real person is depicted; no real case data.
 - **Assistant is read-mostly** — grounded answers + case notes only; never mutates records.
 - **Auditability is a first-class feature**, not an afterthought.

@@ -122,13 +122,77 @@ Section: utils
 Priority: optional
 Architecture: amd64
 Maintainer: Team BlaZe <https://github.com/BlaZe08-Dev/Crime-Intel>
-Depends: libc6 (>= 2.31), libgtk-3-0, libglib2.0-0
+Depends: libc6 (>= 2.31), libgtk-3-0, libglib2.0-0, curl, ca-certificates
 Description: AI-Powered Criminal Network Analysis System
  CrimeIntel is an intelligent workstation application built with Flutter
  for Linux desktop. Features include synthetic criminal record analysis,
  retrieval-grounded LLM assistant (RAG), automatically derived entity graphs,
  and a tamper-evident cryptographic audit log.
 EOF
+
+# Maintainer scripts intentionally install/start only the Ollama runtime.
+# Models are fetched by the app on first launch, where progress and retries are
+# visible and partial downloads can be resumed.
+cat << 'EOF' > "$DEB_STAGING/DEBIAN/postinst"
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$1" = "configure" ]; then
+  if command -v ollama >/dev/null 2>&1; then
+    echo "CrimeIntel: Ollama is already installed."
+  else
+    if ! command -v curl >/dev/null 2>&1; then
+      cat >&2 <<'ERROR'
+CrimeIntel requires Ollama, but curl is unavailable.
+Network access is required while installing this package so Ollama can be installed.
+Install curl and retry configuring CrimeIntel.
+ERROR
+      exit 1
+    fi
+    if ! curl -fsSL https://ollama.com/install.sh | sh; then
+      cat >&2 <<'ERROR'
+CrimeIntel could not install Ollama.
+CrimeIntel requires Ollama and this machine needs network access during package installation.
+Check the network connection and retry configuring the package.
+ERROR
+      exit 1
+    fi
+  fi
+
+  if pidof systemd >/dev/null 2>&1 || command -v systemctl >/dev/null 2>&1; then
+    if ! systemctl enable --now ollama; then
+      echo "CrimeIntel: unable to enable/start the Ollama service." >&2
+      exit 1
+    fi
+    ready=0
+    count=0
+    while [ "$count" -lt 30 ]; do
+      if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+        ready=1
+        break
+      fi
+      sleep 1
+      count=$((count + 1))
+    done
+    if [ "$ready" -ne 1 ]; then
+      echo "CrimeIntel: Ollama did not answer on http://127.0.0.1:11434 within 30 seconds." >&2
+      exit 1
+    fi
+  else
+    echo "CrimeIntel: systemd is unavailable; start 'ollama serve' manually before launching the app." >&2
+  fi
+  echo "CrimeIntel: AI models (~2.5GB) will download automatically the first time CrimeIntel is launched."
+fi
+exit 0
+EOF
+chmod 755 "$DEB_STAGING/DEBIAN/postinst"
+
+cat << 'EOF' > "$DEB_STAGING/DEBIAN/postrm"
+#!/bin/sh
+# Ollama and its models may be shared with other software. Leave them intact.
+exit 0
+EOF
+chmod 755 "$DEB_STAGING/DEBIAN/postrm"
 
 # Install payload to /opt/crime-intel
 cp -r "$BUNDLE_DIR"/* "$DEB_STAGING/opt/crime-intel/"

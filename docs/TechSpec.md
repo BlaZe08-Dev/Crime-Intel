@@ -41,6 +41,11 @@ Platform: **Flutter (Linux desktop)** · Target machine baseline: **8GB RAM, AMD
 - **Embeddings: `nomic-embed-text`** — 274 MB, 768 dimensions.
 - **Swappable interface (`LlmClient`)** — base URL is config (`OLLAMA_BASE_URL`). Escape hatch: point at a stronger machine on the LAN. No code change, no hosted-API rate limits. `OllamaClient` is the only implementation that speaks HTTP; nothing outside `llm/` may call a model directly.
 - **Endpoints:** `/api/chat` (with `tools`), `/api/embed` (batched) falling back to `/api/embeddings` on older servers, `/api/tags` for health.
+- **First-launch bootstrap:** the app checks `/api/tags` before authentication.
+  If either exact required tag is absent, it streams `/api/pull` NDJSON into a
+  blocking progress page, verifies `/api/tags` after each pull, and records
+  system audit events. The `.deb` installs/enables Ollama only; model files are
+  never bundled in any release format.
 - **GPU:** the current dev machine has an RTX 3050, so CUDA works without the AMD/ROCm workarounds this plan originally assumed. Measured on it: ~59 s cold (model load), ~4.3 s warm for a short tool-calling prompt.
 
 ### 2.3 RAG — `rag/`
@@ -138,7 +143,10 @@ Removed: `google_fonts` (fetched fonts over HTTP at launch, breaking Rules §16)
 - Enable desktop: `flutter config --enable-linux-desktop`
 - Run: `flutter run -d linux`
 - Build: `flutter build linux` → `build/linux/x64/release/bundle/`
-- Package the folder (and any bundled enhancement/Ollama-setup helper) into an installer/zip for teammates.
+- The `.deb` declares `curl` and `ca-certificates`, installs/enables Ollama in
+  `postinst`, and needs network access during installation. It does not pull
+  models. AppImage/tarball setup installs Ollama only; model downloads occur
+  in the app on first launch with visible progress.
 
 ## 7. Security / Privacy
 
@@ -172,5 +180,4 @@ To avoid polluting the central database synced across investigator terminals wit
 - **Test Record Isolation:** Any future round-trip integration or connectivity verifications executed against the shared Neon instance must use clearly-tagged identifiers prefixed with `__TEST__` (e.g., `__TEST__-C-LIVE-...`, `__TEST__-DEV-...`).
 - **Immediate Teardown:** All created test records across `shared_criminals`, `shared_case_notes`, `shared_media_items`, and `central_audit_log` must be purged in an automated `finally` block or test teardown immediately upon completion of the verification check.
 - **Dedicated Test Branches:** Where possible, automated CI/CD and verification suites should point to an isolated Neon child branch or dedicated ephemeral database rather than the primary shared production branch.
-
 

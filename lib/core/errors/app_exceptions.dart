@@ -52,7 +52,7 @@ final class LlmModelMissingException extends AppException {
 
   LlmModelMissingException(this.model)
       : super('Model "$model" is not available on the Ollama server. '
-            'Pull it with:  ollama pull $model');
+            'Restart CrimeIntel to download the required model automatically.');
 }
 
 /// Persistence failed.
@@ -77,6 +77,6 @@ final class ActionNotPermittedException extends AppException {
   ActionNotPermittedException(this.attemptedAction, [String? message])
       : super(message ??
             'The assistant is not permitted to perform "$attemptedAction". '
-            'It can only create case notes; criminal records and images can '
-            'be changed by the investigator alone.');
+                'It can only create case notes; criminal records and images can '
+                'be changed by the investigator alone.');
 }

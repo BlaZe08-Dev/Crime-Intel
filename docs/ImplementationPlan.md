@@ -19,7 +19,9 @@
 **Exit:** app opens on Linux, synthetic data loads, first log entries chain correctly.
 
 ## Phase 1 — Local LLM + RAG core (Days 3–5) ⚠️ core value
-- 🧑 ⚠️ Install Ollama on the 8GB/RX6500 machine; pull a **3B Q4** model; confirm it answers on **CPU**. (GPU enablement = separate experimental task, below.)
+- 🧑 ⚠️ Install Ollama on the 8GB/RX6500 machine; CrimeIntel downloads its
+  required models at first launch; confirm it answers on **CPU**. (GPU
+  enablement = separate experimental task, below.)
 - 🤖 `LlmClient` interface + Ollama HTTP client (base URL configurable → LAN fallback).
 - 🤖 Build the RAG pipeline: embed records/logs → local vector store → retrieve → grounded prompt → answer with source IDs.
 - 🤖 Chat UI; "not in the database" behavior when retrieval is empty.

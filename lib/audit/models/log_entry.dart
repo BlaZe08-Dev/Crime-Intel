@@ -35,7 +35,10 @@ enum LogAction {
   CREATE_CASENOTE,
   ENHANCE_IMAGE,
   ATTACH_NEWS,
-  LLM_QUERY;
+  LLM_QUERY,
+  MODEL_PULL_STARTED,
+  MODEL_PULL_COMPLETED,
+  MODEL_PULL_FAILED;
 
   String get displayName {
     switch (this) {
@@ -65,6 +68,12 @@ enum LogAction {
         return 'News Attached';
       case LogAction.LLM_QUERY:
         return 'Assistant Query Executed';
+      case LogAction.MODEL_PULL_STARTED:
+        return 'Model Download Started';
+      case LogAction.MODEL_PULL_COMPLETED:
+        return 'Model Download Completed';
+      case LogAction.MODEL_PULL_FAILED:
+        return 'Model Download Failed';
     }
   }
 

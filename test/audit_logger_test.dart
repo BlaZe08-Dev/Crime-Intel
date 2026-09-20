@@ -75,6 +75,33 @@ void main() {
       expect(result.totalEntries, 3);
     });
 
+    test('model bootstrap actions are system-attributed and chain-valid',
+        () async {
+      for (final action in [
+        LogAction.MODEL_PULL_STARTED,
+        LogAction.MODEL_PULL_COMPLETED,
+        LogAction.MODEL_PULL_FAILED,
+      ]) {
+        await logger.log(
+          context: const SystemContext(),
+          action: action,
+          targetType: 'OllamaModel',
+          targetId: 'granite4.1:3b',
+        );
+      }
+
+      final entries = await logger.getAllLogs();
+      expect(
+          entries.map((entry) => entry.action),
+          containsAll([
+            LogAction.MODEL_PULL_STARTED,
+            LogAction.MODEL_PULL_COMPLETED,
+            LogAction.MODEL_PULL_FAILED,
+          ]));
+      expect(entries.every((entry) => entry.actor == LogActor.SYSTEM), isTrue);
+      expect((await verifier.verifyChain()).isValid, isTrue);
+    });
+
     test('editing an entry breaks verification', () async {
       for (final action in [
         LogAction.LOGIN_OK,

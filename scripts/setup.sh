@@ -5,10 +5,9 @@
 # Sets up prerequisites for running CrimeIntel on Linux:
 #   1. Detects or installs Ollama (via official install script)
 #   2. Verifies Ollama service daemon is active
-#   3. Pulls required models (granite4.1:3b & nomic-embed-text) idempotently
+#   3. Leaves model downloads to the first app launch (with visible progress)
 #   4. Checks for Flutter SDK (with non-blocking guidance for binary users)
 #   5. Initializes local .env from .env.example
-#   6. Displays a comprehensive summary of all components
 # ==============================================================================
 
 set -uo pipefail
@@ -48,8 +47,6 @@ fi
 # Tracking statuses
 STATUS_OLLAMA_CLI="UNKNOWN"
 STATUS_OLLAMA_SRV="UNKNOWN"
-STATUS_MODEL_CHAT="UNKNOWN"
-STATUS_MODEL_EMBED="UNKNOWN"
 STATUS_FLUTTER="UNKNOWN"
 STATUS_ENV="UNKNOWN"
 WARNINGS=0
@@ -135,51 +132,12 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 3. Pull Required AI Models
+# 3. AI model download notice
 # ------------------------------------------------------------------------------
-echo -e "${BOLD}[3/5] Checking required local AI models...${RESET}"
-
-if [ "$STATUS_OLLAMA_SRV" = "Active (port 11434)" ] || [ "$STATUS_OLLAMA_SRV" = "Active (started)" ]; then
-  INSTALLED_MODELS="$(ollama list 2>/dev/null || true)"
-
-  # Chat / Reasoning Model: granite4.1:3b
-  echo -n "  Checking chat model 'granite4.1:3b' (~2.1 GB)... "
-  if echo "$INSTALLED_MODELS" | grep -q "granite4.1:3b"; then
-    echo -e "${GREEN}Already present${RESET}"
-    STATUS_MODEL_CHAT="Present (cached)"
-  else
-    echo -e "${YELLOW}Downloading...${RESET}"
-    if ollama pull granite4.1:3b; then
-      echo -e "  ${GREEN}✓${RESET} Model 'granite4.1:3b' downloaded successfully."
-      STATUS_MODEL_CHAT="Downloaded successfully"
-    else
-      echo -e "  ${RED}✗${RESET} Failed to pull 'granite4.1:3b'."
-      STATUS_MODEL_CHAT="FAILED (pull error)"
-      ((ERRORS++))
-    fi
-  fi
-
-  # Embedding Model: nomic-embed-text
-  echo -n "  Checking embedding model 'nomic-embed-text' (~274 MB)... "
-  if echo "$INSTALLED_MODELS" | grep -q "nomic-embed-text"; then
-    echo -e "${GREEN}Already present${RESET}"
-    STATUS_MODEL_EMBED="Present (cached)"
-  else
-    echo -e "${YELLOW}Downloading...${RESET}"
-    if ollama pull nomic-embed-text; then
-      echo -e "  ${GREEN}✓${RESET} Model 'nomic-embed-text' downloaded successfully."
-      STATUS_MODEL_EMBED="Downloaded successfully"
-    else
-      echo -e "  ${RED}✗${RESET} Failed to pull 'nomic-embed-text'."
-      STATUS_MODEL_EMBED="FAILED (pull error)"
-      ((ERRORS++))
-    fi
-  fi
-else
-  echo -e "  ${YELLOW}!${RESET} Skipping model pull because Ollama daemon is not running."
-  STATUS_MODEL_CHAT="Skipped"
-  STATUS_MODEL_EMBED="Skipped"
-fi
+echo -e "${BOLD}[3/5] AI model download${RESET}"
+echo -e "  ${BLUE}ℹ${RESET} No models are downloaded by setup.sh."
+echo -e "    CrimeIntel downloads its required ~2.5 GB of models automatically"
+echo -e "    on first launch, with live progress and retry support."
 
 # ------------------------------------------------------------------------------
 # 4. Flutter SDK Check (Non-blocking)
@@ -257,8 +215,6 @@ echo -e "${BOLD}${CYAN}                  Setup Summary                       ${R
 echo -e "${BOLD}${CYAN}======================================================${RESET}"
 printf " %-26s : %s\n" "Ollama CLI" "$STATUS_OLLAMA_CLI"
 printf " %-26s : %s\n" "Ollama Service" "$STATUS_OLLAMA_SRV"
-printf " %-26s : %s\n" "Chat Model (granite4.1)" "$STATUS_MODEL_CHAT"
-printf " %-26s : %s\n" "Embed Model (nomic-embed)" "$STATUS_MODEL_EMBED"
 printf " %-26s : %s\n" "Flutter Environment" "$STATUS_FLUTTER"
 printf " %-26s : %s\n" "Configuration (.env)" "$STATUS_ENV"
 echo -e "${CYAN}------------------------------------------------------${RESET}"

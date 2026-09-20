@@ -14,15 +14,13 @@ Pre-compiled packages require **no Flutter SDK**. Choose the format for your Lin
    ```bash
    sudo apt install ./crime-intel_1.0.0_amd64.deb
    ```
-2. **Run the one-step setup script (once):**
-   ```bash
-   crime-intel-setup
-   # or: bash /opt/crime-intel/setup.sh
-   ```
-   *Installs/checks Ollama and pulls required AI models (`granite4.1:3b` and `nomic-embed-text`).*
+2. *The package installs and starts Ollama automatically; network access is
+   required while `apt` configures the package. It does not download models.*
 3. **Launch CrimeIntel:**
    Launch from your application menu or run `crime-intel`.
    *(Configuration is automatically created at `~/.config/crime-intel/.env`)*
+   *CrimeIntel downloads its required AI models automatically on first launch,
+   showing live progress and retry controls.*
 
 ---
 

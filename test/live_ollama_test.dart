@@ -11,6 +11,7 @@ import 'package:crime_intel/data/repositories/crime_repository.dart';
 import 'package:crime_intel/data/repositories/vector_repository.dart';
 import 'package:crime_intel/ingest/ingestion_service.dart';
 import 'package:crime_intel/llm/llm_client.dart';
+import 'package:crime_intel/llm/model_bootstrap.dart';
 import 'package:crime_intel/llm/ollama_client.dart';
 import 'package:crime_intel/models/case_note.dart';
 import 'package:crime_intel/rag/rag_indexer.dart';
@@ -48,8 +49,8 @@ void main() {
     DatabaseHelper.initFfi();
     llm = OllamaClient(
       baseUrl: 'http://localhost:11434',
-      chatModel: 'granite4.1:3b',
-      embedModel: 'nomic-embed-text',
+      chatModel: RequiredOllamaModels.chat,
+      embedModel: RequiredOllamaModels.embedding,
       chatTimeout: const Duration(minutes: 5),
       embedTimeout: const Duration(minutes: 2),
     );
@@ -97,8 +98,8 @@ void main() {
   test('both models are installed', () async {
     final health = await llm.checkHealth();
     expect(health.reachable, isTrue);
-    expect(health.hasModel('granite4.1:3b'), isTrue);
-    expect(health.hasModel('nomic-embed-text'), isTrue);
+    expect(health.hasModel(RequiredOllamaModels.chat), isTrue);
+    expect(health.hasModel(RequiredOllamaModels.embedding), isTrue);
   });
 
   test('embeddings come back at the expected dimension', () async {
@@ -194,8 +195,8 @@ void main() {
     for (final call in response.toolCalls) {
       // ignore: avoid_print
       print('[live] model requested tool: ${call.name}');
-      final outcome = await ActionGuard(caseNotes: records, audit: audit)
-          .dispatch(call);
+      final outcome =
+          await ActionGuard(caseNotes: records, audit: audit).dispatch(call);
       if (call.name != 'createCaseNote') {
         expect(outcome, isA<ActionDenied>());
       }

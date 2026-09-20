@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'core/constants/constants.dart';
 import 'core/di/app_services.dart';
 import 'data/db/database_helper.dart';
+import 'llm/model_bootstrap.dart';
 import 'ui/screens/auth/login_screen.dart';
+import 'ui/screens/bootstrap/model_bootstrap_screen.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/widgets/startup_failure_view.dart';
 
@@ -22,6 +26,8 @@ class CrimeIntelApp extends StatefulWidget {
 
 class _CrimeIntelAppState extends State<CrimeIntelApp> {
   late Future<AppServices> _startup;
+  ModelBootstrap? _modelBootstrap;
+  bool _modelsReady = false;
 
   @override
   void initState() {
@@ -36,10 +42,41 @@ class _CrimeIntelAppState extends State<CrimeIntelApp> {
   Future<AppServices> _bootstrap() async {
     final services = await AppServices.bootstrap();
     await services.prepareData();
+    _modelBootstrap?.dispose();
+    _modelBootstrap = ModelBootstrap(audit: services.audit)
+      ..addListener(_onModelBootstrapChanged);
+    // The first /api/tags check happens before the model page is built. When
+    // both tags already exist, login follows without flashing that page.
+    _modelsReady = await _modelBootstrap!.requiredModelsPresent();
+    if (!_modelsReady) {
+      unawaited(_modelBootstrap!.ensureModels().then((ready) {
+        if (mounted) setState(() => _modelsReady = ready);
+      }));
+    }
     return services;
   }
 
-  void _retry() => setState(() => _startup = _bootstrap());
+  void _onModelBootstrapChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _retry() {
+    final modelBootstrap = _modelBootstrap;
+    if (modelBootstrap != null) {
+      modelBootstrap.ensureModels().then((ready) {
+        if (mounted) setState(() => _modelsReady = ready);
+      });
+    } else {
+      setState(() => _startup = _bootstrap());
+    }
+  }
+
+  @override
+  void dispose() {
+    _modelBootstrap?.removeListener(_onModelBootstrapChanged);
+    _modelBootstrap?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,8 +92,13 @@ class _CrimeIntelAppState extends State<CrimeIntelApp> {
             error: snapshot.error!,
             onRetry: _retry,
           );
-        } else {
+        } else if (_modelsReady) {
           home = LoginScreen(services: services!);
+        } else {
+          home = ModelBootstrapScreen(
+            bootstrap: _modelBootstrap!,
+            onRetry: _retry,
+          );
         }
 
         final app = MaterialApp(

@@ -37,13 +37,14 @@ cd Crime-Intel
 cp .env.example .env
 ```
 
-4. Install [Ollama](https://ollama.com/) for Linux, start its local service,
-   and pull both required models:
+4. Install [Ollama](https://ollama.com/) for Linux and start its local service.
+   Do not run `ollama pull`: CrimeIntel verifies and downloads its required
+   models (~2.5 GB) automatically on first launch, with live progress and a
+   retry option. The app needs network access for that first launch.
 
 ```
-ollama pull granite4.1:3b       # chat / answers  (~2.1 GB, Apache-2.0)
-ollama pull nomic-embed-text    # embeddings      (~274 MB, 768-dim)
-ollama list                     # both should appear
+curl -fsSL https://ollama.com/install.sh | sh
+ollama serve                     # only when your system service is not running
 ```
 
    Ollama serves on `http://localhost:11434`. The app also contacts SendGrid when
@@ -65,6 +66,14 @@ flutter run -d linux
 flutter test        # unit + integration tests; no model server needed
 flutter analyze
 ```
+
+### Packaged Linux releases
+
+The Debian/Ubuntu `.deb` installs Ollama during package configuration, so it
+requires network access at install time. It does not bundle or pull models.
+On first launch, CrimeIntel downloads the required ~2.5 GB of models with a
+visible progress screen. AppImage and tarball users run `scripts/setup.sh` to
+install Ollama; that script also leaves model downloads to first launch.
 
 ### Configuration reference
 
