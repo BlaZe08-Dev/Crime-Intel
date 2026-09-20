@@ -24,7 +24,7 @@ Rules for any contributor (human or AI agent). Tool-agnostic.
 13. Image enhancement and the LLM must not both hold large memory at once (8GB budget) — run one heavy job at a time.
 
 ## 4. Security / Privacy Rules
-14. Secrets (Resend API key, any keys) live in a local `.env`, git-ignored, never committed.
+14. Secrets (SendGrid API key, any keys) live in a local `.env`, git-ignored, never committed.
 15. Face embeddings stored locally only; never exported, never logged in raw form.
 16. News search is the only default outbound network call besides OTP email; nothing else phones home.
 

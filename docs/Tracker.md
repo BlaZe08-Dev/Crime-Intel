@@ -50,20 +50,20 @@
 ## Phase 2 — Auth
 | # | Task | Who | Status |
 |---|---|---|---|
-| 2.1 | Email OTP via Resend (send/verify), key in .env | 🤖 | ☑ |
+| 2.1 | Email OTP via SendGrid (send/verify), key in .env | 🤖 | ☑ |
 | 2.2 | Face capture + embedder + enroll/match (descoped) | 🤖 | ☐ |
 | 2.3 | ⚠ Test face match on real webcam; tune threshold (descoped) | 🧑 | ☐ |
 | 2.4 | Gate app behind auth; log all attempts | 🤖 | ☑ |
 
-- A registration/login gate is implemented in source: email → Resend 6-digit,
+- A registration/login gate is implemented in source: email → SendGrid 6-digit,
   one-minute OTP → mandatory strong-password creation; later sessions require
   the stored salted, iterated password hash. `AuthSessionIssuer.issue` remains
   the single mint point and logs `LOGIN_OK` only after successful sign-in.
 - `OTP_SENT`, `OTP_OK`, `LOGIN_FAIL`, and `PASSWORD_RESET` are audit logged. The developer-owned
-  `RESEND_API_KEY` is a local `.env` setting only. Resend's test sender can
-  deliver to the Resend account owner's address without a verified domain.
+  `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` are local `.env` settings only.
+  Single Sender Verification enables delivery to confirmed inboxes.
 - **Verified end-to-end on the real Linux target machine:** registration,
-  Resend OTP delivery and verification, password setup, and a subsequent
+  SendGrid OTP delivery and verification, password setup, and a subsequent
   login all completed successfully. On any delivery failure, or with
   `DEMO_MODE=true`, the UI shows the code and logs `demo fallback, not emailed`.
   The auth flow is also covered by the automated test suite.

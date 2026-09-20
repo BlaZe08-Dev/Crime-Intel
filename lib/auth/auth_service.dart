@@ -69,40 +69,52 @@ class AuthService {
 
     http.Response? response;
     try {
-      if (!AppConfig.isResendConfigured) {
-        throw const AuthException('RESEND_API_KEY is not configured.');
+      if (!AppConfig.isSendgridConfigured) {
+        throw const AuthException(
+            'SENDGRID_API_KEY or SENDGRID_FROM_EMAIL is not configured.');
       }
       response = await _http
           .post(
-            Uri.parse('https://api.resend.com/emails'),
+            Uri.parse('https://api.sendgrid.com/v3/mail/send'),
             headers: {
-              'Authorization': 'Bearer ${AppConfig.resendApiKey}',
-              'Content-Type': 'application/json'
+              'Authorization': 'Bearer ${AppConfig.sendgridApiKey}',
+              'Content-Type': 'application/json',
             },
             body: jsonEncode({
-              'from': 'onboarding@resend.dev',
-              'to': [email],
+              'personalizations': [
+                {
+                  'to': [
+                    {'email': email}
+                  ]
+                }
+              ],
+              'from': {'email': AppConfig.sendgridFromEmail},
               'subject': 'Your CrimeIntel verification code',
-              'html':
-                  '<p>Your verification code is <strong>$code</strong>.</p><p>It expires in one minute.</p>',
+              'content': [
+                {
+                  'type': 'text/html',
+                  'value':
+                      '<p>Your verification code is <strong>$code</strong>. It expires in one minute.</p>',
+                }
+              ],
             }),
           )
           .timeout(const Duration(seconds: 20));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw const AuthException(
-            'Resend did not accept the verification email.');
+            'SendGrid did not accept the verification email.');
       }
       await _logOtpSent(email, purpose);
       return const OtpDelivery.emailed();
     } catch (error, stackTrace) {
       debugPrint(
-        'Resend OTP send failed; using demo fallback: $error\n'
+        'SendGrid OTP send failed; using demo fallback: $error\n'
         'HTTP status: ${response?.statusCode ?? 'no response'}\n'
         'HTTP response body: ${response?.body ?? 'no response body'}\n'
         '$stackTrace',
       );
       await _logOtpSent(email, purpose,
-          demoFallback: true, reason: 'Resend send failed');
+          demoFallback: true, reason: 'SendGrid send failed');
       return OtpDelivery.demo(code);
     }
   }

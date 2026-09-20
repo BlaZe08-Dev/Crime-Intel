@@ -18,7 +18,7 @@ Platform: **Flutter (Linux desktop)** · Target machine baseline: **8GB RAM, AMD
 ├───────────┬───────────┬────────────┬───────────┬─────────────┤
 │  Auth      │  LLM       │  RAG       │  Enhance  │  Graph/NLP   │
 │  Face embed│  Ollama    │  Vector DB │  Real-    │  entity ext  │
-│  + Resend  │  (3B Q4,   │  + record  │  ESRGAN   │  + centrality│
+│  + SendGrid│  (3B Q4,   │  + record  │  ESRGAN   │  + centrality│
 │  email OTP │  swappable)│  store     │  + GFPGAN │  + anomaly   │
 ├───────────┴───────────┴────────────┴───────────┴─────────────┤
 │  Local Storage: SQLite (records+logs) · Vector index · Files  │
@@ -31,7 +31,7 @@ Platform: **Flutter (Linux desktop)** · Target machine baseline: **8GB RAM, AMD
 
 ### 2.1 Auth — `auth/`
 - **Primary: custom face recognition.** Capture from webcam → face detector → face-embedding model (e.g. an ONNX ArcFace/FaceNet-style embedder) → cosine-match against enrolled investigator embeddings stored locally. Threshold-gated.
-- **Fallback: email OTP via Resend.** Generate a 6-digit code → send through Resend's transactional email API → verify. `RESEND_API_KEY` lives in a local `.env` (never in repo). If delivery fails or `DEMO_MODE=true`, the app visibly presents the code and the audit event records `demo fallback, not emailed`.
+- **Fallback: email OTP via SendGrid.** Generate a 6-digit code → send through SendGrid's transactional email API → verify. `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` live in a local `.env` (never in repo). If delivery fails or `DEMO_MODE=true`, the app visibly presents the code and the audit event records `demo fallback, not emailed`.
 - Note: this is a *custom* matcher (matches faces we enrolled), deliberately independent of OS account authentication, which cannot provide an app-controlled face-only check.
 - Session gated behind successful auth; every login attempt (success/fail/OTP) is logged.
 
@@ -106,7 +106,7 @@ Four independent things must all fail for the assistant to mutate a record:
 | RAG store | SQLite `vector_chunks` + in-Dart cosine | offline, no native extension |
 | Embeddings | `nomic-embed-text` (768-dim) | offline |
 | Face auth | webcam + ONNX face embedder (ArcFace/FaceNet-style) | **not built yet** |
-| OTP email | Resend transactional email | implemented; `RESEND_API_KEY` in local `.env` |
+| OTP email | SendGrid transactional email | implemented; `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` in local `.env` |
 | Image enhance | Real-ESRGAN + GFPGAN/CodeFormer | **not built yet** |
 | Graph/NLP | gazetteer NER + PageRank/betweenness/label-propagation, pure Dart | no Python side-process |
 | News | web search API / light fetch | **not built yet** |
@@ -142,7 +142,7 @@ Removed: `google_fonts` (fetched fonts over HTTP at launch, breaking Rules §16)
 
 ## 7. Security / Privacy
 
-- Face embeddings + Resend key + any secrets stored locally, never committed.
+- Face embeddings + SendGrid key + any secrets stored locally, never committed.
 - Synthetic data only; nothing real leaves the machine except opt-in news queries.
 - Hash-chained logs make the audit trail defensible — a headline feature for judging.
 

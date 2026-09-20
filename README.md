@@ -30,7 +30,7 @@ cd Crime-Intel
 ```
 
 3. Create your local configuration. `.env` is ignored by Git; never commit a
-   Resend key. Add a Resend API key to receive OTP emails, or temporarily set
+   SendGrid key. Add a SendGrid API key and verified single sender email to receive OTP emails, or temporarily set
    `DEMO_MODE=true` only for a labelled local demo fallback:
 
 ```
@@ -46,7 +46,7 @@ ollama pull nomic-embed-text    # embeddings      (~274 MB, 768-dim)
 ollama list                     # both should appear
 ```
 
-   Ollama serves on `http://localhost:11434`. The app also contacts Resend when
+   Ollama serves on `http://localhost:11434`. The app also contacts SendGrid when
    sending a real email OTP.
 
 5. Fetch dependencies and launch the Linux desktop app:
@@ -76,7 +76,8 @@ The useful `.env` keys are:
 | `OLLAMA_MODEL` | `granite4.1:3b` | Swap the chat model |
 | `RAG_TOP_K` | `6` | How many records ground each answer |
 | `RAG_MIN_SCORE` | `0.35` | Relevance floor; below it the assistant refuses to answer |
-| `RESEND_API_KEY` | *(blank)* | OTP email through Resend's `onboarding@resend.dev` test sender |
+| `SENDGRID_API_KEY` | *(blank)* | OTP email through SendGrid API |
+| `SENDGRID_FROM_EMAIL` | *(blank)* | Verified single sender email address for SendGrid OTP emails |
 | `NEON_DATABASE_URL` | *(blank)* | Neon (PostgreSQL) connection string for opportunistic multi-investigator sync |
 | `DEMO_MODE` | `false` | When `true`, show the registration OTP in the app instead of emailing it |
 
@@ -104,7 +105,7 @@ The project is mid-build. This is the honest state:
 **Built and verified**
 - Hash-chained, append-only audit log with chain verification
 - SQLite store + synthetic dataset from `docs/Criminals.md`
-- Email-OTP registration and subsequent password login via Resend on the Linux target
+- Email-OTP registration and subsequent password login via SendGrid on the Linux target
 - Local LLM interface via Ollama behind a swappable `LlmClient`
 - RAG: embed → retrieve → grounded answer with cited record ids (automated coverage)
 - Assistant action boundary (`createCaseNote` only), enforced structurally
@@ -118,7 +119,7 @@ The project is mid-build. This is the honest state:
 
 **Intentional future work (not silent gaps)**
 - Face recognition / webcam authentication — email OTP is the supported
-  hackathon auth path. If Resend delivery fails or `DEMO_MODE=true`, the app
+  hackathon auth path. If SendGrid delivery fails or `DEMO_MODE=true`, the app
   clearly displays the generated code and records the non-emailed fallback.
 - News search and attachment UI — only the documented repository/audit seam is retained.
 - Image enhancement (Real-ESRGAN / GFPGAN) — only the documented disclaimer seam is retained.

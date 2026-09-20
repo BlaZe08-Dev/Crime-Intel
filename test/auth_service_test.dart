@@ -12,7 +12,8 @@ import 'package:test/test.dart';
 void main() {
   setUpAll(DatabaseHelper.initFfi);
   setUp(() => AppConfig.overrideForTest({
-        'RESEND_API_KEY': 're_test',
+        'SENDGRID_API_KEY': 'sg_test',
+        'SENDGRID_FROM_EMAIL': 'sender@example.test',
       }));
   tearDown(AppConfig.resetForTest);
 
@@ -24,12 +25,16 @@ void main() {
       db: db,
       audit: audit,
       httpClient: MockClient((request) async {
-        expect(request.url.toString(), 'https://api.resend.com/emails');
-        expect(request.headers['authorization'], 'Bearer re_test');
+        expect(request.url.toString(), 'https://api.sendgrid.com/v3/mail/send');
+        expect(request.headers['authorization'], 'Bearer sg_test');
         expect(request.headers['content-type'], 'application/json');
-        expect(request.body, contains('"from":"onboarding@resend.dev"'));
-        expect(request.body, contains('"to":["analyst@example.test"]'));
-        expect(request.body, contains('"html":'));
+        expect(request.body,
+            contains('"from":{"email":"sender@example.test"}'));
+        expect(request.body,
+            contains('"to":[{"email":"analyst@example.test"}]'));
+        expect(request.body, contains('"type":"text/html"'));
+        expect(request.body,
+            contains('Your verification code is <strong>123456</strong>'));
         return httpResponse();
       }),
       otpGenerator: () => '123456',
@@ -52,7 +57,7 @@ void main() {
     await db.close();
   });
 
-  test('failed Resend delivery exposes a demo code and audits the fallback',
+  test('failed SendGrid delivery exposes a demo code and audits the fallback',
       () async {
     final Database db = await DatabaseHelper.openInMemory();
     final audit = AuditLogger(db);
@@ -60,7 +65,7 @@ void main() {
       db: db,
       audit: audit,
       httpClient: MockClient(
-          (_) async => http.Response('{"message":"invalid key"}', 401)),
+          (_) async => http.Response('{"errors":[{"message":"invalid key"}]}', 401)),
       otpGenerator: () => '123456',
     );
 
@@ -74,15 +79,18 @@ void main() {
     await db.close();
   });
 
-  test('DEMO_MODE skips Resend and exposes a demo code', () async {
-    AppConfig.overrideForTest(
-        {'RESEND_API_KEY': 're_test', 'DEMO_MODE': 'true'});
+  test('DEMO_MODE skips SendGrid and exposes a demo code', () async {
+    AppConfig.overrideForTest({
+      'SENDGRID_API_KEY': 'sg_test',
+      'SENDGRID_FROM_EMAIL': 'sender@example.test',
+      'DEMO_MODE': 'true',
+    });
     final Database db = await DatabaseHelper.openInMemory();
     final auth = AuthService(
       db: db,
       audit: AuditLogger(db),
       httpClient: MockClient(
-          (_) async => fail('Resend must not be called in demo mode')),
+          (_) async => fail('SendGrid must not be called in demo mode')),
       otpGenerator: () => '123456',
     );
 
@@ -190,4 +198,4 @@ void main() {
   });
 }
 
-http.Response httpResponse() => http.Response('{"id":"email_123"}', 200);
+http.Response httpResponse() => http.Response('', 202);

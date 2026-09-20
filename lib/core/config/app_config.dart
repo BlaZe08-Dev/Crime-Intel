@@ -11,7 +11,7 @@ import 'package:flutter/services.dart' show rootBundle;
 ///
 /// **Why `.env` is read from disk rather than bundled as an asset.** This is a
 /// packaged desktop app: the investigator gets a folder, and the natural place
-/// for their Resend key is a `.env` sitting next to the executable that they
+/// for their SendGrid key is a `.env` sitting next to the executable that they
 /// can edit without rebuilding. Baking it into the asset bundle would mean the
 /// key is compiled in, and would make a fresh clone fail to build whenever the
 /// declared `.env` asset was missing. Load order:
@@ -132,10 +132,14 @@ abstract final class AppConfig {
   /// guessing (`docs/Rules.md` §4).
   static double get retrievalMinScore => _readDouble('RAG_MIN_SCORE', 0.35);
 
-  /// Resend key for OTP email. Empty when unset; never committed.
-  static String get resendApiKey => _read('RESEND_API_KEY', '');
+  /// SendGrid key for OTP email. Empty when unset; never committed.
+  static String get sendgridApiKey => _read('SENDGRID_API_KEY', '');
 
-  static bool get isResendConfigured => resendApiKey.isNotEmpty;
+  /// Verified Single Sender email address for SendGrid transactional email.
+  static String get sendgridFromEmail => _read('SENDGRID_FROM_EMAIL', '');
+
+  static bool get isSendgridConfigured =>
+      sendgridApiKey.isNotEmpty && sendgridFromEmail.isNotEmpty;
 
   /// Neon (Postgres) database URL for opportunistic sync.
   /// Empty when unset; never committed.
@@ -155,7 +159,7 @@ abstract final class AppConfig {
         'embedModel': embedModel,
         'retrievalTopK': '$retrievalTopK',
         'retrievalMinScore': '$retrievalMinScore',
-        'resendConfigured': '$isResendConfigured',
+        'sendgridConfigured': '$isSendgridConfigured',
         'neonConfigured': '$isNeonConfigured',
         'demoMode': '$demoMode',
       };
