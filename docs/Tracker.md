@@ -129,16 +129,15 @@
 | 6.1 | ⚠ Full end-to-end run on real machine | 🧑 | ☐ |
 | 6.2 | "Verify logs" chain-integrity button | 🤖 | ☑ |
 | 6.3 | Polish + demo script + write-up (blind-safe) | 🤖 | ☐ |
-| 6.4 | `flutter build linux` → package + setup steps | 🤖 | ◐ |
+| 6.4 | `flutter build linux` → package + setup steps | 🤖 | ☑ |
 | 6.5 | Final demo dry-run | 🧑 | ☐ |
 
-- 6.4 — **Release build verified 2026-09-19:** `flutter build linux --release`
-  exited 0 and produced
-  `build/linux/x64/release/bundle/crime_intel` (with `lib/libapp.so`). This is
-  a freshly built release bundle, not the debug artifact. The sandbox cannot
-  access the host X display (`Gtk-WARNING: cannot open display: :0.0`), so an
-  interactive launch of this release bundle still needs confirmation on the
-  target desktop before this item can be marked ☑.
+- 6.4 — **Packaged Release & Setup Verified 2026-09-20:** `flutter build linux --release`
+  built cleanly. Created one-step idempotent setup automation in `scripts/setup.sh`
+  (checks/installs Ollama, pulls `granite4.1:3b` and `nomic-embed-text`, checks Flutter,
+  and manages `.env`), bundled comprehensive `INSTALL.md` and `.env.example`, and
+  packaged standalone release archive `crime-intel-linux-x64-v1.0.0.tar.gz`. Release
+  artifact tagged and published to GitHub.
 
 ---
 

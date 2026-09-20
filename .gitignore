@@ -44,3 +44,6 @@ migrate_working_dir/
 # Vendored upstream reference implementations (kept on disk, not tracked)
 # Real-ESRGAN / GFPGAN / CodeFormer references — see docs/ReferenceRepo.md
 reference-repo/
+
+# Distribution packages
+dist/
