@@ -185,6 +185,12 @@ class _GraphScreenState extends State<GraphScreen>
           '${snapshot.edges.length} relationships',
           style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
+        if (selected != null) ...[
+          const SizedBox(height: 18),
+          _sectionLabel('SELECTED NODE'),
+          const SizedBox(height: 8),
+          _buildSelected(snapshot, selected),
+        ],
         const SizedBox(height: 18),
         FilledButton.icon(
           onPressed: _explaining ? null : _explainNetwork,
@@ -221,13 +227,6 @@ class _GraphScreenState extends State<GraphScreen>
               style: TextStyle(fontSize: 12, color: AppColors.textMuted))
         else
           for (final anomaly in analysis.anomalies) _buildAnomaly(anomaly),
-
-        if (selected != null) ...[
-          const SizedBox(height: 20),
-          _sectionLabel('SELECTED NODE'),
-          const SizedBox(height: 8),
-          _buildSelected(snapshot, selected),
-        ],
       ],
     );
   }
@@ -282,17 +281,20 @@ class _GraphScreenState extends State<GraphScreen>
     final centrality = snapshot.analysis.centrality[entityId];
     final isHub = snapshot.analysis.hubEntityId == entityId;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isHub ? AppColors.accentAmber : AppColors.border,
+    return InkWell(
+      onTap: () => setState(() => _selectedId = entityId),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isHub ? AppColors.accentAmber : AppColors.border,
+          ),
         ),
-      ),
-      child: Row(
+        child: Row(
         children: [
           Expanded(
             child: Column(
@@ -327,8 +329,9 @@ class _GraphScreenState extends State<GraphScreen>
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildAnomaly(AnomalyFlag anomaly) {
     final color = switch (anomaly.severity) {
@@ -378,7 +381,9 @@ class _GraphScreenState extends State<GraphScreen>
   }
 
   Widget _buildSelected(NetworkSnapshot snapshot, String entityId) {
-    final entity = snapshot.entities.firstWhere((e) => e.id == entityId);
+    final matches = snapshot.entities.where((e) => e.id == entityId);
+    if (matches.isEmpty) return const SizedBox.shrink();
+    final entity = matches.first;
     final centrality = snapshot.analysis.centrality[entityId];
     final links = snapshot.edges
         .where((e) => e.srcEntityId == entityId || e.dstEntityId == entityId)
@@ -389,36 +394,62 @@ class _GraphScreenState extends State<GraphScreen>
       decoration: BoxDecoration(
         color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(entity.value,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
-          Text(entity.type.displayName,
-              style: const TextStyle(fontSize: 11, color: AppColors.primary)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entity.value,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      entity.type.displayName,
+                      style: const TextStyle(fontSize: 11, color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: 'Deselect',
+                onPressed: () => setState(() => _selectedId = null),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Text(
             'Degree ${centrality?.degree ?? 0} · '
             'evidence weight ${centrality?.weightedDegree ?? 0}',
             style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
           ),
-          const SizedBox(height: 10),
-          for (final link in links.take(8))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                '${link.relation.displayName} · '
-                '${_otherEndLabel(snapshot, link, entityId)} '
-                '(${link.evidenceIds.length})',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
+          if (links.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            for (final link in links.take(8))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '${link.relation.displayName} · '
+                  '${_otherEndLabel(snapshot, link, entityId)} '
+                  '(${link.evidenceIds.length})',
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary),
+                ),
               ),
-            ),
+          ],
         ],
       ),
     );

@@ -167,3 +167,10 @@ $$\text{canonicalEntryHash} = \text{SHA256}(\text{seq} \mid \text{deviceId} \mid
 3. **Conflict Resolution:** Last-synced-wins based on `synced_at`.
 4. **Anonymized Attribution:** `shared_criminals` and `shared_case_notes` do not expose investigator identities to peer terminals. The assistant prompt rule explicitly prohibits citing investigator names, referencing only bracketed entity IDs (`[C-001]`, `[NOTE-002]`). Accountability is preserved in `central_audit_log` (with no de-anonymizing admin screen shipped for this pass).
 
+### 8.4 Neon Live Verification & Testing Guidelines
+To avoid polluting the central database synced across investigator terminals with phantom nodes or corrupted relationship graphs:
+- **Test Record Isolation:** Any future round-trip integration or connectivity verifications executed against the shared Neon instance must use clearly-tagged identifiers prefixed with `__TEST__` (e.g., `__TEST__-C-LIVE-...`, `__TEST__-DEV-...`).
+- **Immediate Teardown:** All created test records across `shared_criminals`, `shared_case_notes`, `shared_media_items`, and `central_audit_log` must be purged in an automated `finally` block or test teardown immediately upon completion of the verification check.
+- **Dedicated Test Branches:** Where possible, automated CI/CD and verification suites should point to an isolated Neon child branch or dedicated ephemeral database rather than the primary shared production branch.
+
+
