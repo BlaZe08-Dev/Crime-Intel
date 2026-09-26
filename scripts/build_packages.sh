@@ -14,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 BUNDLE_DIR="$ROOT_DIR/build/linux/x64/release/bundle"
-VERSION="1.1.0"
+VERSION="1.1.1"
 
 echo "======================================================"
 echo " CrimeIntel Multi-Distro Packaging Pipeline (v$VERSION)"
