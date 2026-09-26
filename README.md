@@ -9,6 +9,25 @@ See `docs/` for the PRD, tech spec, schema, flows and rules.
 
 ---
 
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/login.png" alt="Investigator sign-in"></td>
+<td width="50%"><img src="docs/screenshots/dashboard.png" alt="Investigator Workspace dashboard"></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/assistant.png" alt="Assistant"></td>
+<td width="50%"><img src="docs/screenshots/network.png" alt="Network analysis"></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/audit-log.png" alt="Immutable audit trail"></td>
+<td width="50%"><img src="docs/screenshots/criminal-detail.png" alt="Criminal detail record"></td>
+</tr>
+</table>
+
+---
+
 ## How to run
 
 1. Install the current stable [Flutter SDK for Linux desktop](https://docs.flutter.dev/get-started/install/linux/desktop)
