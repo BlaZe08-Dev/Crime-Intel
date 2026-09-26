@@ -12,7 +12,7 @@ Pre-compiled packages require **no Flutter SDK**. Choose the format for your Lin
 
 1. **Install the package:**
    ```bash
-   sudo apt install ./crime-intel_1.0.0_amd64.deb
+   sudo apt install ./crime-intel_1.1.1_amd64.deb
    ```
 2. *The package installs and starts Ollama automatically; network access is
    required while `apt` configures the package. It does not download models.*
@@ -28,7 +28,7 @@ Pre-compiled packages require **no Flutter SDK**. Choose the format for your Lin
 
 1. **Download and make executable:**
    ```bash
-   chmod +x CrimeIntel-1.0.0-x86_64.AppImage
+   chmod +x CrimeIntel-1.1.1-x86_64.AppImage
    ```
 2. **Run setup:**
    Download and run `setup.sh` once:
@@ -37,7 +37,7 @@ Pre-compiled packages require **no Flutter SDK**. Choose the format for your Lin
    ```
 3. **Launch CrimeIntel:**
    ```bash
-   ./CrimeIntel-1.0.0-x86_64.AppImage
+   ./CrimeIntel-1.1.1-x86_64.AppImage
    ```
 
 ---
@@ -46,8 +46,8 @@ Pre-compiled packages require **no Flutter SDK**. Choose the format for your Lin
 
 1. **Extract archive:**
    ```bash
-   tar -xzf crime-intel-linux-x64-v1.0.0.tar.gz
-   cd crime-intel-linux-x64-v1.0.0
+   tar -xzf crime-intel-linux-x64-v1.1.1.tar.gz
+   cd crime-intel-linux-x64-v1.1.1
    ```
 2. **Run setup:**
    ```bash
