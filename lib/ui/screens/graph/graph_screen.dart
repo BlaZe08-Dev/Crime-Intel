@@ -35,10 +35,10 @@ class _GraphScreenState extends State<GraphScreen>
   String? _explanationError;
 
   static const _communityColors = [
-    AppColors.primary,
-    AppColors.accentAmber,
-    AppColors.accentPurple,
-    AppColors.accentEmerald,
+    WorkspaceColors.primary,
+    WorkspaceColors.accentAmber,
+    WorkspaceColors.accentViolet,
+    WorkspaceColors.accentEmerald,
     Color(0xFFEC4899),
     Color(0xFF14B8A6),
   ];
@@ -123,14 +123,14 @@ class _GraphScreenState extends State<GraphScreen>
     if (snapshot == null || snapshot.isEmpty) {
       return const Center(
         child: Text('No network could be derived from the current records.',
-            style: TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: WorkspaceColors.textSecondary)),
       );
     }
 
     return Row(
       children: [
         Expanded(flex: 7, child: _buildCanvas(snapshot)),
-        const VerticalDivider(width: 1, color: AppColors.border),
+        const VerticalDivider(width: 1, color: WorkspaceColors.border),
         SizedBox(width: 340, child: _buildSidePanel(snapshot)),
       ],
     );
@@ -142,8 +142,7 @@ class _GraphScreenState extends State<GraphScreen>
         final size = Size(constraints.maxWidth, constraints.maxHeight);
         if (size != _canvas) {
           _canvas = size;
-          WidgetsBinding.instance
-              .addPostFrameCallback((_) => _startLayout());
+          WidgetsBinding.instance.addPostFrameCallback((_) => _startLayout());
         }
 
         final layout = _layout;
@@ -175,15 +174,20 @@ class _GraphScreenState extends State<GraphScreen>
     final selected = _selectedId;
 
     return ListView(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       children: [
-        Text('Network Analysis',
-            style: Theme.of(context).textTheme.titleLarge),
+        const Text('Network Analysis',
+            style: TextStyle(
+                fontFamily: AppTheme.displayFamily,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: WorkspaceColors.textPrimary)),
         const SizedBox(height: 4),
         Text(
-          '${snapshot.entities.length} entities · '
+          '${snapshot.entities.length} entities, '
           '${snapshot.edges.length} relationships',
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          style:
+              const TextStyle(fontSize: 12, color: WorkspaceColors.textMuted),
         ),
         if (selected != null) ...[
           const SizedBox(height: 18),
@@ -192,39 +196,48 @@ class _GraphScreenState extends State<GraphScreen>
           _buildSelected(snapshot, selected),
         ],
         const SizedBox(height: 18),
-        FilledButton.icon(
-          onPressed: _explaining ? null : _explainNetwork,
-          icon: _explaining
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.auto_awesome_outlined, size: 17),
-          label: Text(_explaining ? 'Generating narrative...' : 'Explain this network'),
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: FilledButton.icon(
+            onPressed: _explaining ? null : _explainNetwork,
+            style: FilledButton.styleFrom(
+                backgroundColor: WorkspaceColors.primary,
+                foregroundColor: WorkspaceColors.background),
+            icon: _explaining
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_awesome_outlined, size: 17),
+            label: Text(_explaining
+                ? 'Generating narrative...'
+                : 'Explain this network'),
+          ),
         ),
         if (_explanationError != null) ...[
           const SizedBox(height: 10),
           Text(_explanationError!,
-              style: const TextStyle(fontSize: 12, color: AppColors.accentRose)),
+              style: const TextStyle(
+                  fontSize: 12, color: WorkspaceColors.accentRose)),
         ],
         if (_explanation != null) ...[
           const SizedBox(height: 12),
           _buildExplanation(_explanation!),
         ],
         const SizedBox(height: 20),
-
         _sectionLabel('KEY INDIVIDUALS (PAGERANK)'),
         const SizedBox(height: 8),
-        for (final entityId in analysis.rankedKeyIndividuals.take(5))
-          _buildRankRow(snapshot, entityId),
-
+        for (final MapEntry(key: i, value: entityId)
+            in analysis.rankedKeyIndividuals.take(5).toList().asMap().entries)
+          _buildRankRow(snapshot, entityId, i + 1),
         const SizedBox(height: 20),
         _sectionLabel('FLAGGED PATTERNS'),
         const SizedBox(height: 8),
         if (analysis.anomalies.isEmpty)
           const Text('No anomalies detected.',
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted))
+              style: TextStyle(fontSize: 12, color: WorkspaceColors.textMuted))
         else
           for (final anomaly in analysis.anomalies) _buildAnomaly(anomaly),
       ],
@@ -237,17 +250,17 @@ class _GraphScreenState extends State<GraphScreen>
           fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 1,
-          color: AppColors.textMuted,
+          color: WorkspaceColors.textMuted,
         ),
       );
 
   Widget _buildExplanation(AssistantReply reply) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.surfaceCard,
+          color: WorkspaceColors.surfaceCard,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-              color: AppColors.accentPurple.withValues(alpha: 0.5)),
+              color: WorkspaceColors.accentViolet.withValues(alpha: 0.5)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,125 +270,184 @@ class _GraphScreenState extends State<GraphScreen>
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1,
-                    color: AppColors.accentPurple)),
+                    color: WorkspaceColors.accentViolet)),
             const SizedBox(height: 8),
             SelectableText(reply.answer,
                 style: const TextStyle(
                     fontSize: 12,
-                    color: AppColors.textPrimary,
+                    color: WorkspaceColors.textPrimary,
                     height: 1.45)),
             if (reply.sources.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(
                 'Sources: ${reply.sources.map((source) => source.sourceId).join(', ')}',
-                style: AppTheme.mono.copyWith(
-                    fontSize: 10, color: AppColors.primary),
+                style: AppTheme.mono
+                    .copyWith(fontSize: 10, color: WorkspaceColors.primary),
               ),
             ],
           ],
         ),
       );
 
-  Widget _buildRankRow(NetworkSnapshot snapshot, String entityId) {
+  Widget _buildRankRow(NetworkSnapshot snapshot, String entityId, int rank) {
     final entity = snapshot.entities.firstWhere((e) => e.id == entityId);
     final centrality = snapshot.analysis.centrality[entityId];
     final isHub = snapshot.analysis.hubEntityId == entityId;
+    final pageRank = centrality?.pageRank ?? 0;
 
     return InkWell(
       onTap: () => setState(() => _selectedId = entityId),
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.surfaceCard,
+          color: WorkspaceColors.surfaceCard,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isHub ? AppColors.accentAmber : AppColors.border,
+            color: isHub ? WorkspaceColors.accentAmber : WorkspaceColors.border,
           ),
         ),
-        child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(entity.value,
+                Expanded(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    children: [
+                      Text('#$rank',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: WorkspaceColors.textMuted)),
+                      Text(entity.value,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: WorkspaceColors.textPrimary)),
+                      if (isHub)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: WorkspaceColors.accentAmber
+                                .withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('HUB',
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: WorkspaceColors.accentAmber)),
+                        ),
+                    ],
+                  ),
+                ),
+                Text(pageRank.toStringAsFixed(2),
                     style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary)),
-                Text(
-                  'PageRank ${centrality?.pageRank.toStringAsFixed(4) ?? "-"} · '
-                  'betweenness ${centrality?.betweenness.toStringAsFixed(1) ?? "-"}',
-                  style: const TextStyle(
-                      fontSize: 10, color: AppColors.textMuted),
-                ),
+                        color: WorkspaceColors.textPrimary)),
               ],
             ),
-          ),
-          if (isHub)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.accentAmber.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: pageRank.clamp(0, 1).toDouble(),
+                minHeight: 4,
+                backgroundColor: WorkspaceColors.border,
+                valueColor: AlwaysStoppedAnimation(isHub
+                    ? WorkspaceColors.accentAmber
+                    : WorkspaceColors.primary),
               ),
-              child: const Text('HUB',
-                  style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accentAmber)),
             ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildAnomaly(AnomalyFlag anomaly) {
     final color = switch (anomaly.severity) {
-      AnomalySeverity.high => AppColors.accentRose,
-      AnomalySeverity.medium => AppColors.accentAmber,
-      AnomalySeverity.low => AppColors.textMuted,
+      AnomalySeverity.high => WorkspaceColors.accentRose,
+      AnomalySeverity.medium => WorkspaceColors.accentAmber,
+      AnomalySeverity.low => WorkspaceColors.textMuted,
+    };
+    final severityLabel = switch (anomaly.severity) {
+      AnomalySeverity.high => 'HIGH',
+      AnomalySeverity.medium => 'MEDIUM',
+      AnomalySeverity.low => 'LOW',
     };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: WorkspaceColors.surfaceCard,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
+        border: Border.all(color: WorkspaceColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(Icons.warning_amber_rounded, size: 14, color: color),
-              const SizedBox(width: 6),
+              Container(width: 3, color: color),
               Expanded(
-                child: Text(anomaly.title,
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: color)),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(9, 10, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(severityLabel,
+                                style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: color)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(anomaly.title,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: WorkspaceColors.textPrimary)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(anomaly.description,
+                          style: const TextStyle(
+                              fontSize: 11,
+                              color: WorkspaceColors.textSecondary,
+                              height: 1.4)),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Evidence: ${anomaly.evidenceIds.take(6).join(", ")}'
+                        '${anomaly.evidenceIds.length > 6 ? " +${anomaly.evidenceIds.length - 6}" : ""}',
+                        style: AppTheme.mono.copyWith(
+                            fontSize: 10, color: WorkspaceColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 5),
-          Text(anomaly.description,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary, height: 1.4)),
-          const SizedBox(height: 6),
-          Text(
-            'Evidence: ${anomaly.evidenceIds.take(6).join(", ")}'
-            '${anomaly.evidenceIds.length > 6 ? " +${anomaly.evidenceIds.length - 6}" : ""}',
-            style: AppTheme.mono
-                .copyWith(fontSize: 10, color: AppColors.textMuted),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -392,9 +464,10 @@ class _GraphScreenState extends State<GraphScreen>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: WorkspaceColors.surfaceCard,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+        border:
+            Border.all(color: WorkspaceColors.primary.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,18 +484,20 @@ class _GraphScreenState extends State<GraphScreen>
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: WorkspaceColors.textPrimary,
                       ),
                     ),
                     Text(
                       entity.type.displayName,
-                      style: const TextStyle(fontSize: 11, color: AppColors.primary),
+                      style: const TextStyle(
+                          fontSize: 11, color: WorkspaceColors.primary),
                     ),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
+                icon: const Icon(Icons.close,
+                    size: 16, color: WorkspaceColors.textMuted),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 tooltip: 'Deselect',
@@ -434,7 +509,8 @@ class _GraphScreenState extends State<GraphScreen>
           Text(
             'Degree ${centrality?.degree ?? 0} · '
             'evidence weight ${centrality?.weightedDegree ?? 0}',
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            style:
+                const TextStyle(fontSize: 11, color: WorkspaceColors.textMuted),
           ),
           if (links.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -446,7 +522,7 @@ class _GraphScreenState extends State<GraphScreen>
                   '${_otherEndLabel(snapshot, link, entityId)} '
                   '(${link.evidenceIds.length})',
                   style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary),
+                      fontSize: 11, color: WorkspaceColors.textSecondary),
                 ),
               ),
           ],
@@ -494,10 +570,9 @@ class _NetworkPainter extends CustomPainter {
 
       final paint = Paint()
         ..color = touchesSelection
-            ? AppColors.primary.withValues(alpha: 0.85)
-            : AppColors.border.withValues(alpha: 0.7)
-        ..strokeWidth =
-            (1.0 + (edge.weight * 0.45)).clamp(1.0, 5.0).toDouble()
+            ? WorkspaceColors.primary.withValues(alpha: 0.85)
+            : WorkspaceColors.border.withValues(alpha: 0.7)
+        ..strokeWidth = (1.0 + (edge.weight * 0.45)).clamp(1.0, 5.0).toDouble()
         ..style = PaintingStyle.stroke;
 
       canvas.drawLine(a.position, b.position, paint);
@@ -522,7 +597,7 @@ class _NetworkPainter extends CustomPainter {
         canvas.drawCircle(
           node.position,
           radius + 7,
-          Paint()..color = AppColors.accentAmber.withValues(alpha: 0.22),
+          Paint()..color = WorkspaceColors.accentAmber.withValues(alpha: 0.22),
         );
       }
 
@@ -536,8 +611,8 @@ class _NetworkPainter extends CustomPainter {
         radius,
         Paint()
           ..color = isHub
-              ? AppColors.accentAmber
-              : (isSelected ? Colors.white : AppColors.background)
+              ? WorkspaceColors.accentAmber
+              : (isSelected ? Colors.white : WorkspaceColors.background)
           ..strokeWidth = isHub || isSelected ? 2.5 : 1.5
           ..style = PaintingStyle.stroke,
       );
@@ -551,7 +626,9 @@ class _NetworkPainter extends CustomPainter {
             style: TextStyle(
               fontSize: 11,
               fontWeight: isHub ? FontWeight.w700 : FontWeight.w500,
-              color: isHub ? AppColors.accentAmber : AppColors.textPrimary,
+              color: isHub
+                  ? WorkspaceColors.accentAmber
+                  : WorkspaceColors.textPrimary,
             ),
           ),
           textDirection: TextDirection.ltr,

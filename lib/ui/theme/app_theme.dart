@@ -23,6 +23,30 @@ class AppColors {
   static const Color textMuted = Color(0xFF64748B);
 }
 
+/// Palette for the "Investigator Workspace" screens (dashboard, assistant,
+/// network, audit log, criminal detail) and their shared shell — a slightly
+/// different navy than [AppColors], matching the current Figma workspace
+/// frames. The auth screens keep [AppColors] since that is what their own
+/// Figma frame specifies.
+class WorkspaceColors {
+  static const Color background = Color(0xFF0B1326);
+  static const Color surfaceCard = Color(0xFF171F32);
+  static const Color surfaceElevated = Color(0xFF222A3D);
+  static const Color inputBackground = Color(0xFF131B2E);
+  static const Color border = Color(0xFF3E484F);
+
+  static const Color textPrimary = Color(0xFFDAE2FC);
+  static const Color textSecondary = Color(0xFFBDC8D1);
+  static const Color textMuted = Color(0xFF87929A);
+
+  static const Color primary = Color(0xFF38BDF8);
+  static const Color primaryLight = Color(0xFF8ED5FF);
+  static const Color accentAmber = Color(0xFFF59E0B);
+  static const Color accentRose = Color(0xFFF43F5E);
+  static const Color accentEmerald = Color(0xFF10B981);
+  static const Color accentViolet = Color(0xFFA78BFA);
+}
+
 /// Application theme.
 ///
 /// Typography comes from fonts bundled in `assets/fonts` and declared in

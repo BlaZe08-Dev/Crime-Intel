@@ -37,6 +37,7 @@ class CriminalDetailScreen extends StatefulWidget {
 
 class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
   static final _date = DateFormat('yyyy-MM-dd');
+  static final _timestamp = DateFormat('yyyy-MM-dd HH:mm:ss');
   static final _money = NumberFormat.decimalPattern('en_IN');
 
   Criminal? _criminal;
@@ -103,7 +104,8 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     if (file == null || !mounted) return;
 
     final ext = file.name.split('.').last.toLowerCase();
-    final isDoc = ['pdf', 'txt', 'doc', 'docx', 'md', 'json', 'csv'].contains(ext);
+    final isDoc =
+        ['pdf', 'txt', 'doc', 'docx', 'md', 'json', 'csv'].contains(ext);
     final mediaType = isDoc ? MediaType.DOCUMENT : MediaType.PHOTO;
 
     final confirmed = await showDialog<bool>(
@@ -146,7 +148,9 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${mediaType.displayName} uploaded and added to the audit log.')),
+        SnackBar(
+            content: Text(
+                '${mediaType.displayName} uploaded and added to the audit log.')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -160,22 +164,25 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: WorkspaceColors.surfaceCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppColors.border),
+          side: const BorderSide(color: WorkspaceColors.border),
         ),
         title: const Row(
           children: [
-            Icon(Icons.delete_outline, color: AppColors.accentRose, size: 22),
+            Icon(Icons.delete_outline,
+                color: WorkspaceColors.accentRose, size: 22),
             SizedBox(width: 8),
-            Text('Confirm Deletion', style: TextStyle(color: AppColors.textPrimary)),
+            Text('Confirm Deletion',
+                style: TextStyle(color: WorkspaceColors.textPrimary)),
           ],
         ),
         content: Text(
           'Are you sure you want to delete "${item.caption.isEmpty ? item.type.displayName : item.caption}"?\n\n'
           'This will soft-delete the item and record the action in the audit trail.',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          style: const TextStyle(
+              color: WorkspaceColors.textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
@@ -184,7 +191,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accentRose,
+              backgroundColor: WorkspaceColors.accentRose,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Delete'),
@@ -203,7 +210,9 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${item.type.displayName} soft-deleted and logged to audit trail.')),
+        SnackBar(
+            content: Text(
+                '${item.type.displayName} soft-deleted and logged to audit trail.')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -220,14 +229,15 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: WorkspaceColors.surfaceCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppColors.border),
+          side: const BorderSide(color: WorkspaceColors.border),
         ),
         title: const Row(
           children: [
-            Icon(Icons.note_add_outlined, color: AppColors.primary, size: 22),
+            Icon(Icons.note_add_outlined,
+                color: WorkspaceColors.primary, size: 22),
             SizedBox(width: 10),
             Text('Add Case Note / Detail',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -244,19 +254,23 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                 Text(
                   'Record new investigative intelligence or observations regarding ${_criminal?.name ?? widget.criminalId}. '
                   'Saves to local SQLite immediately (fully offline) and logs in the local audit chain.',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 12, color: WorkspaceColors.textSecondary),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: textController,
                   maxLines: 5,
                   autofocus: true,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                      fontSize: 13, color: WorkspaceColors.textPrimary),
                   decoration: const InputDecoration(
-                    hintText: 'Enter case details, observations, notes, or tips...',
-                    hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    hintText:
+                        'Enter case details, observations, notes, or tips...',
+                    hintStyle: TextStyle(
+                        fontSize: 12, color: WorkspaceColors.textMuted),
                     filled: true,
-                    fillColor: AppColors.surfaceCard,
+                    fillColor: WorkspaceColors.surfaceCard,
                     border: OutlineInputBorder(),
                   ),
                   validator: (val) {
@@ -277,7 +291,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: WorkspaceColors.primary,
               foregroundColor: Colors.black,
             ),
             icon: const Icon(Icons.save_outlined, size: 16),
@@ -306,7 +320,8 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Case note saved and logged to the audit chain.')),
+        const SnackBar(
+            content: Text('Case note saved and logged to the audit chain.')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -326,14 +341,14 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: WorkspaceColors.surfaceCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppColors.border),
+          side: const BorderSide(color: WorkspaceColors.border),
         ),
         title: const Row(
           children: [
-            Icon(Icons.add_call, color: AppColors.primary, size: 22),
+            Icon(Icons.add_call, color: WorkspaceColors.primary, size: 22),
             SizedBox(width: 10),
             Text('Add Call Detail Record (CDR)',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -351,55 +366,65 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                   Text(
                     'Record a call detail record for ${_criminal?.name ?? widget.criminalId}. '
                     'Saves to local SQLite immediately and logs to the immutable audit chain.',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 12, color: WorkspaceColors.textSecondary),
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: callerController,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Caller Number / ID *',
                       hintText: '+91-98100-99001',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (val) =>
-                        val == null || val.trim().isEmpty ? 'Caller ID cannot be empty.' : null,
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Caller ID cannot be empty.'
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: calleeController,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Callee Number / ID *',
                       hintText: '+91-98200-11223',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (val) =>
-                        val == null || val.trim().isEmpty ? 'Callee ID cannot be empty.' : null,
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Callee ID cannot be empty.'
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: durationController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Duration (seconds) *',
                       border: OutlineInputBorder(),
                     ),
                     validator: (val) =>
-                        val == null || int.tryParse(val.trim()) == null ? 'Enter valid duration in seconds.' : null,
+                        val == null || int.tryParse(val.trim()) == null
+                            ? 'Enter valid duration in seconds.'
+                            : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: cellSiteController,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Cell Site / Tower *',
                       hintText: 'Pune-Sector-4',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (val) =>
-                        val == null || val.trim().isEmpty ? 'Cell site cannot be empty.' : null,
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Cell site cannot be empty.'
+                        : null,
                   ),
                 ],
               ),
@@ -413,7 +438,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: WorkspaceColors.primary,
               foregroundColor: Colors.black,
             ),
             icon: const Icon(Icons.save_outlined, size: 16),
@@ -447,7 +472,9 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Call detail record added and logged to the audit chain.')),
+        const SnackBar(
+            content: Text(
+                'Call detail record added and logged to the audit chain.')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -466,14 +493,14 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: WorkspaceColors.surfaceCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppColors.border),
+          side: const BorderSide(color: WorkspaceColors.border),
         ),
         title: const Row(
           children: [
-            Icon(Icons.add_card, color: AppColors.primary, size: 22),
+            Icon(Icons.add_card, color: WorkspaceColors.primary, size: 22),
             SizedBox(width: 10),
             Text('Add Financial Transaction',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -491,44 +518,53 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                   Text(
                     'Record a financial transaction involving ${_criminal?.name ?? widget.criminalId}. '
                     'Saves to local SQLite immediately and logs to the immutable audit chain.',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 12, color: WorkspaceColors.textSecondary),
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: counterpartyController,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Counterparty / Beneficiary *',
                       hintText: 'Zenith Impex',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (val) =>
-                        val == null || val.trim().isEmpty ? 'Counterparty cannot be empty.' : null,
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Counterparty cannot be empty.'
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Amount (INR) *',
                       hintText: '500000',
                       border: OutlineInputBorder(),
                     ),
                     validator: (val) =>
-                        val == null || double.tryParse(val.trim()) == null ? 'Enter valid numeric amount.' : null,
+                        val == null || double.tryParse(val.trim()) == null
+                            ? 'Enter valid numeric amount.'
+                            : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: channelController,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Channel / Method *',
                       hintText: 'Hawala, Cash, Wire, UPI',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (val) =>
-                        val == null || val.trim().isEmpty ? 'Channel cannot be empty.' : null,
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Channel cannot be empty.'
+                        : null,
                   ),
                 ],
               ),
@@ -542,7 +578,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: WorkspaceColors.primary,
               foregroundColor: Colors.black,
             ),
             icon: const Icon(Icons.save_outlined, size: 16),
@@ -576,7 +612,9 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Financial transaction added and logged to the audit chain.')),
+        const SnackBar(
+            content: Text(
+                'Financial transaction added and logged to the audit chain.')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -597,14 +635,15 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: WorkspaceColors.surfaceCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppColors.border),
+          side: const BorderSide(color: WorkspaceColors.border),
         ),
         title: const Row(
           children: [
-            Icon(Icons.history_edu_outlined, color: AppColors.primary, size: 22),
+            Icon(Icons.history_edu_outlined,
+                color: WorkspaceColors.primary, size: 22),
             SizedBox(width: 10),
             Text('Add Prior Criminal History',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -622,44 +661,51 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                   Text(
                     'Record prior criminal history / offense for ${_criminal?.name ?? widget.criminalId}. '
                     'Saves to local SQLite immediately and logs to the immutable audit chain.',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 12, color: WorkspaceColors.textSecondary),
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: offenseController,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Offense / Charge *',
                       hintText: 'IPC 420 / Phishing Fraud',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (val) =>
-                        val == null || val.trim().isEmpty ? 'Offense cannot be empty.' : null,
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Offense cannot be empty.'
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: dateController,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Date (YYYY-MM-DD) *',
                       hintText: '2023-08-15',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (val) =>
-                        val == null || val.trim().isEmpty ? 'Date cannot be empty.' : null,
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Date cannot be empty.'
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: dispositionController,
                     maxLines: 2,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: WorkspaceColors.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'Disposition / Case Status *',
                       hintText: 'Chargesheet filed, trial ongoing',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (val) =>
-                        val == null || val.trim().isEmpty ? 'Disposition cannot be empty.' : null,
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Disposition cannot be empty.'
+                        : null,
                   ),
                 ],
               ),
@@ -673,7 +719,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: WorkspaceColors.primary,
               foregroundColor: Colors.black,
             ),
             icon: const Icon(Icons.save_outlined, size: 16),
@@ -705,7 +751,9 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Criminal history record added and logged to the audit chain.')),
+        const SnackBar(
+            content: Text(
+                'Criminal history record added and logged to the audit chain.')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -722,43 +770,46 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     return ServicesScope(
       services: widget.services,
       child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: Text(criminal?.name ?? widget.criminalId),
-          backgroundColor: AppColors.surface,
-          actions: const [
-            Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: Center(
-                child: SizedBox(
-                  width: 240,
-                  child: SyncStatusBadge(compact: false),
-                ),
-              ),
+        backgroundColor: WorkspaceColors.background,
+        body: Column(
+          children: [
+            _topBar(),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : criminal == null
+                      ? const Center(
+                          child: Text('Record not found.',
+                              style: TextStyle(
+                                  color: WorkspaceColors.textSecondary)),
+                        )
+                      : _content(criminal),
             ),
           ],
         ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : criminal == null
-              ? const Center(
-                  child: Text('Record not found.',
-                      style: TextStyle(color: AppColors.textSecondary)),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(24),
+      ),
+    );
+  }
+
+  Widget _content(Criminal criminal) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _profile(criminal),
+          const SizedBox(height: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 7,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _profile(criminal),
-                    const SizedBox(height: 22),
-                    _mediaHeader(),
-                    const SizedBox(height: 10),
-                    if (_media.isNotEmpty) ...[
-                      _mediaStrip(),
-                    ],
-                    const SizedBox(height: 22),
                     if (_texts.isNotEmpty) ...[
-                      _section('Reports & Intelligence',
-                          Icons.description_outlined),
+                      _section(
+                          'Reports & Intelligence', Icons.description_outlined),
                       const SizedBox(height: 10),
                       for (final text in _texts) _textRecord(text),
                       const SizedBox(height: 22),
@@ -768,47 +819,167 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                     if (_payments.isEmpty)
                       const Text('No financial transactions recorded.',
                           style: TextStyle(
-                              fontSize: 12, color: AppColors.textMuted))
-                    else
+                              fontSize: 12, color: WorkspaceColors.textMuted))
+                    else ...[
+                      _tableHeader(const [
+                        ('DATE', 3),
+                        ('COUNTERPARTY', 4),
+                        ('AMOUNT', 3),
+                        ('CHANNEL', 3),
+                      ]),
                       for (final payment in _payments) _payment(payment),
+                    ],
                     const SizedBox(height: 22),
                     _cdrHeader(),
                     const SizedBox(height: 10),
                     if (_calls.isEmpty)
                       const Text('No call detail records recorded.',
                           style: TextStyle(
-                              fontSize: 12, color: AppColors.textMuted))
-                    else
+                              fontSize: 12, color: WorkspaceColors.textMuted))
+                    else ...[
+                      _tableHeader(const [
+                        ('TIMESTAMP', 4),
+                        ('IDENTIFIER', 4),
+                        ('DURATION', 2),
+                        ('TOWER / CELL ID', 3),
+                      ]),
                       for (final call in _calls) _call(call),
+                    ],
                     const SizedBox(height: 22),
                     _historyHeader(),
                     const SizedBox(height: 10),
                     if (_history.isEmpty)
                       const Text('No prior criminal history recorded.',
                           style: TextStyle(
-                              fontSize: 12, color: AppColors.textMuted))
+                              fontSize: 12, color: WorkspaceColors.textMuted))
                     else
                       for (final item in _history) _historyRow(item),
                     const SizedBox(height: 22),
                     _caseNotesHeader(),
                     const SizedBox(height: 10),
                     if (_notes.isEmpty)
-                      const Text('No case notes yet.',
-                          style: TextStyle(
-                              fontSize: 12, color: AppColors.textMuted))
+                      _emptyCaseNotes()
                     else
                       for (final note in _notes) _note(note),
                   ],
                 ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _mediaHeader(),
+                    const SizedBox(height: 10),
+                    if (_media.isEmpty)
+                      const Text('No media or documents uploaded.',
+                          style: TextStyle(
+                              fontSize: 12, color: WorkspaceColors.textMuted))
+                    else
+                      _mediaStrip(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
+  Widget _topBar() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+        decoration: const BoxDecoration(
+          color: WorkspaceColors.surfaceCard,
+          border: Border(bottom: BorderSide(color: WorkspaceColors.border)),
+        ),
+        child: Row(
+          children: [
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('Back to Targets'),
+              style: TextButton.styleFrom(
+                  foregroundColor: WorkspaceColors.textSecondary),
+            ),
+            const Spacer(),
+            const SyncStatusBadge(compact: true),
+            const SizedBox(width: 16),
+            OutlinedButton.icon(
+              onPressed: _addCaseNote,
+              icon: const Icon(Icons.note_add_outlined, size: 16),
+              label: const Text('Add Case Note'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: WorkspaceColors.textPrimary,
+                side: const BorderSide(color: WorkspaceColors.border),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _tableHeader(List<(String, int)> columns) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        child: Row(
+          children: [
+            for (final (label, flex) in columns)
+              Expanded(
+                flex: flex,
+                child: Text(label,
+                    style: AppTheme.mono.copyWith(
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                        color: WorkspaceColors.textMuted)),
+              ),
+          ],
+        ),
+      );
+
+  Widget _emptyCaseNotes() => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        decoration: BoxDecoration(
+          border: Border.all(color: WorkspaceColors.border),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.sticky_note_2_outlined,
+                size: 28, color: WorkspaceColors.textMuted),
+            const SizedBox(height: 10),
+            const Text('No case notes yet.',
+                style: TextStyle(
+                    fontSize: 13, color: WorkspaceColors.textSecondary)),
+            const SizedBox(height: 4),
+            const Text(
+              'Record observations or tag evidentiary hypotheses to assist\nteam investigators.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: WorkspaceColors.textMuted),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _addCaseNote,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add First Note'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: WorkspaceColors.textPrimary,
+                side: const BorderSide(color: WorkspaceColors.border),
+              ),
+            ),
+          ],
+        ),
+      );
+
   Widget _section(String title, IconData icon) => Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.primary),
+          Icon(icon, size: 18, color: WorkspaceColors.primary),
           const SizedBox(width: 8),
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          Flexible(
+            child: Text(title,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge),
+          ),
         ],
       );
 
@@ -840,8 +1011,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
   Widget _cdrHeader() => Row(
         children: [
           Expanded(
-              child: _section(
-                  'Call Detail Records', Icons.phone_outlined)),
+              child: _section('Call Detail Records', Icons.phone_outlined)),
           OutlinedButton.icon(
             onPressed: _addCdrRecord,
             icon: const Icon(Icons.add_call, size: 17),
@@ -852,9 +1022,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
 
   Widget _historyHeader() => Row(
         children: [
-          Expanded(
-              child: _section(
-                  'Prior History', Icons.gavel_outlined)),
+          Expanded(child: _section('Prior History', Icons.gavel_outlined)),
           OutlinedButton.icon(
             onPressed: _addCriminalHistory,
             icon: const Icon(Icons.history_edu_outlined, size: 17),
@@ -880,46 +1048,73 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surfaceCard,
+          color: WorkspaceColors.surfaceCard,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor ?? AppColors.border),
+          border: Border.all(color: borderColor ?? WorkspaceColors.border),
         ),
         child: child,
       );
 
-  Widget _profile(Criminal criminal) => _card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(criminal.name,
-                style: Theme.of(context).textTheme.displayMedium),
-            const SizedBox(height: 6),
-            Text(
-              'Aliases: ${criminal.aliases.join(", ")}  ·  DOB ${criminal.dob}  '
-              '·  ${criminal.gender}',
+  Widget _profile(Criminal criminal) {
+    final riskColor = switch (criminal.riskLevel) {
+      RiskLevel.HIGH => WorkspaceColors.accentRose,
+      RiskLevel.MED => WorkspaceColors.accentAmber,
+      RiskLevel.LOW => WorkspaceColors.accentEmerald,
+    };
+    final statusColor = switch (criminal.status) {
+      CriminalStatus.AT_LARGE => WorkspaceColors.accentRose,
+      CriminalStatus.IN_CUSTODY => WorkspaceColors.accentEmerald,
+      CriminalStatus.UNDER_WATCH => WorkspaceColors.textSecondary,
+      CriminalStatus.DECEASED => WorkspaceColors.textMuted,
+    };
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 6,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: WorkspaceColors.inputBackground,
+                  border: Border.all(color: WorkspaceColors.border),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(criminal.id,
+                    style: AppTheme.mono.copyWith(
+                        fontSize: 11, color: WorkspaceColors.textSecondary)),
+              ),
+              Text(criminal.name,
+                  style: const TextStyle(
+                      fontFamily: AppTheme.displayFamily,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: WorkspaceColors.textPrimary)),
+              _tag(criminal.riskLevel.displayName, riskColor),
+              _tag(criminal.status.displayName, statusColor),
+              if (criminal.isDeleted)
+                _tag('SOFT-DELETED', WorkspaceColors.accentRose),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Aliases: ${criminal.aliases.join(", ")}  ·  DOB ${criminal.dob}  '
+            '·  ${criminal.gender}  ·  ${criminal.lastKnownLoc}',
+            style: const TextStyle(
+                fontSize: 12, color: WorkspaceColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          Text('Known for: ${criminal.knownFor}',
               style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _tag(criminal.status.displayName, AppColors.primary),
-                _tag('Risk: ${criminal.riskLevel.displayName}',
-                    AppColors.accentAmber),
-                _tag(criminal.lastKnownLoc, AppColors.textSecondary),
-                if (criminal.isDeleted)
-                  _tag('SOFT-DELETED', AppColors.accentRose),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text('Known for: ${criminal.knownFor}',
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textPrimary)),
-          ],
-        ),
-      );
+                  fontSize: 13, color: WorkspaceColors.textPrimary)),
+        ],
+      ),
+    );
+  }
 
   Widget _tag(String label, Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -955,14 +1150,14 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                           ? Container(
                               width: 130,
                               height: 130,
-                              color: AppColors.surfaceElevated,
+                              color: WorkspaceColors.surfaceElevated,
                               alignment: Alignment.center,
                               padding: const EdgeInsets.all(8),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   const Icon(Icons.description_outlined,
-                                      size: 40, color: AppColors.primary),
+                                      size: 40, color: WorkspaceColors.primary),
                                   const SizedBox(height: 8),
                                   Text(
                                     item.caption.replaceFirst(
@@ -973,7 +1168,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                                     style: const TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                                      color: WorkspaceColors.textPrimary,
                                     ),
                                   ),
                                 ],
@@ -1008,14 +1203,14 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                             child: InkWell(
                               key: Key('delete-media-${item.id}'),
                               onTap: () => _deleteMedia(item),
-                              hoverColor:
-                                  AppColors.accentRose.withValues(alpha: 0.2),
+                              hoverColor: WorkspaceColors.accentRose
+                                  .withValues(alpha: 0.2),
                               child: const Padding(
                                 padding: EdgeInsets.all(5),
                                 child: Icon(
                                   Icons.delete_outline,
                                   size: 16,
-                                  color: AppColors.accentRose,
+                                  color: WorkspaceColors.accentRose,
                                 ),
                               ),
                             ),
@@ -1030,7 +1225,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                   child: Text(
                     item.type.displayName,
                     style: const TextStyle(
-                        fontSize: 10, color: AppColors.textMuted),
+                        fontSize: 10, color: WorkspaceColors.textMuted),
                   ),
                 ),
               ],
@@ -1042,10 +1237,10 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
   Widget _missingMedia() => Container(
         width: 130,
         height: 130,
-        color: AppColors.surfaceElevated,
+        color: WorkspaceColors.surfaceElevated,
         alignment: Alignment.center,
         child: const Icon(Icons.image_not_supported_outlined,
-            color: AppColors.textMuted),
+            color: WorkspaceColors.textMuted),
       );
 
   Widget _textRecord(TextRecord record) => _card(
@@ -1056,25 +1251,25 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
               children: [
                 Text(record.id,
                     style: AppTheme.mono.copyWith(
-                        fontSize: 11, color: AppColors.primary)),
+                        fontSize: 11, color: WorkspaceColors.primary)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(record.title,
                       style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary)),
+                          color: WorkspaceColors.textPrimary)),
                 ),
                 Text(record.kind.displayName,
                     style: const TextStyle(
-                        fontSize: 10, color: AppColors.textMuted)),
+                        fontSize: 10, color: WorkspaceColors.textMuted)),
               ],
             ),
             const SizedBox(height: 8),
             Text(record.body,
                 style: const TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: WorkspaceColors.textSecondary,
                     height: 1.5)),
           ],
         ),
@@ -1083,26 +1278,32 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
   Widget _payment(FinancialTxn txn) => _card(
         child: Row(
           children: [
-            Text(txn.id,
-                style: AppTheme.mono
-                    .copyWith(fontSize: 11, color: AppColors.primary)),
-            const SizedBox(width: 12),
             Expanded(
-              child: Text('→ ${txn.counterparty}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
+              flex: 3,
+              child: Text(
+                  _date.format(DateTime.fromMillisecondsSinceEpoch(txn.ts)),
+                  style: AppTheme.mono.copyWith(
+                      fontSize: 11, color: WorkspaceColors.textMuted)),
             ),
-            Text('${txn.currency} ${_money.format(txn.amount)}',
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
-            const SizedBox(width: 12),
-            Text(
-              '${txn.channel} · '
-              '${_date.format(DateTime.fromMillisecondsSinceEpoch(txn.ts))}',
-              style:
-                  const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            Expanded(
+              flex: 4,
+              child: Text(txn.counterparty,
+                  style: const TextStyle(
+                      fontSize: 12, color: WorkspaceColors.textPrimary)),
+            ),
+            Expanded(
+              flex: 3,
+              child: Text('${txn.currency} ${_money.format(txn.amount)}',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: WorkspaceColors.textPrimary)),
+            ),
+            Expanded(
+              flex: 3,
+              child: Text(txn.channel,
+                  style: const TextStyle(
+                      fontSize: 12, color: WorkspaceColors.textSecondary)),
             ),
           ],
         ),
@@ -1110,25 +1311,33 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
 
   Widget _call(CdrRecord call) => _card(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(call.id,
-                style: AppTheme.mono
-                    .copyWith(fontSize: 11, color: AppColors.primary)),
-            const SizedBox(width: 12),
             Expanded(
-              child: Text('${call.callerId}  →  ${call.calleeId}',
+              flex: 4,
+              child: Text(
+                  _timestamp
+                      .format(DateTime.fromMillisecondsSinceEpoch(call.ts)),
                   style: AppTheme.mono.copyWith(
-                      fontSize: 12, color: AppColors.textSecondary)),
+                      fontSize: 11, color: WorkspaceColors.textMuted)),
             ),
-            Text('${call.durationSec}s',
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textPrimary)),
-            const SizedBox(width: 12),
-            Text(
-              '${call.cellSite} · '
-              '${_date.format(DateTime.fromMillisecondsSinceEpoch(call.ts))}',
-              style:
-                  const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            Expanded(
+              flex: 4,
+              child: Text('${call.callerId} → ${call.calleeId}',
+                  style: AppTheme.mono.copyWith(
+                      fontSize: 11, color: WorkspaceColors.textPrimary)),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text('${call.durationSec}s',
+                  style: const TextStyle(
+                      fontSize: 12, color: WorkspaceColors.textPrimary)),
+            ),
+            Expanded(
+              flex: 3,
+              child: Text(call.cellSite,
+                  style: const TextStyle(
+                      fontSize: 11, color: WorkspaceColors.textMuted)),
             ),
           ],
         ),
@@ -1145,17 +1354,17 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                       style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary)),
+                          color: WorkspaceColors.textPrimary)),
                 ),
                 Text(item.date,
                     style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted)),
+                        fontSize: 11, color: WorkspaceColors.textMuted)),
               ],
             ),
             const SizedBox(height: 5),
             Text(item.dispositionNote,
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
+                    fontSize: 12, color: WorkspaceColors.textSecondary)),
           ],
         ),
       );
@@ -1164,8 +1373,8 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
     final byAssistant = note.author == NoteAuthor.ASSISTANT;
     return _card(
       borderColor: byAssistant
-          ? AppColors.accentPurple.withValues(alpha: 0.5)
-          : AppColors.border,
+          ? WorkspaceColors.accentViolet.withValues(alpha: 0.5)
+          : WorkspaceColors.border,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1175,8 +1384,8 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                 byAssistant ? Icons.auto_awesome : Icons.person_outline,
                 size: 13,
                 color: byAssistant
-                    ? AppColors.accentPurple
-                    : AppColors.textSecondary,
+                    ? WorkspaceColors.accentViolet
+                    : WorkspaceColors.textSecondary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -1185,16 +1394,16 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: byAssistant
-                      ? AppColors.accentPurple
-                      : AppColors.textSecondary,
+                      ? WorkspaceColors.accentViolet
+                      : WorkspaceColors.textSecondary,
                 ),
               ),
               const Spacer(),
               Text(
                 _date.format(
                     DateTime.fromMillisecondsSinceEpoch(note.createdAt)),
-                style:
-                    const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                style: const TextStyle(
+                    fontSize: 11, color: WorkspaceColors.textMuted),
               ),
             ],
           ),
@@ -1202,7 +1411,7 @@ class _CriminalDetailScreenState extends State<CriminalDetailScreen> {
           Text(note.text,
               style: const TextStyle(
                   fontSize: 12,
-                  color: AppColors.textPrimary,
+                  color: WorkspaceColors.textPrimary,
                   height: 1.5)),
         ],
       ),

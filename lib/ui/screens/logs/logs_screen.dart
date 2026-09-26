@@ -70,7 +70,8 @@ class _LogsScreenState extends State<LogsScreen> {
       }
 
       try {
-        final logs = await services.syncTransport.fetchCanonicalLogs(limit: 100);
+        final logs =
+            await services.syncTransport.fetchCanonicalLogs(limit: 100);
         final valid = await services.syncTransport.verifyCanonicalChain();
         if (!mounted) return;
         setState(() {
@@ -108,11 +109,12 @@ class _LogsScreenState extends State<LogsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.cloud_off,
-                        size: 44, color: AppColors.textMuted),
+                        size: 44, color: WorkspaceColors.textMuted),
                     const SizedBox(height: 12),
                     Text(
                       _centralError!,
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      style:
+                          const TextStyle(color: WorkspaceColors.textSecondary),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
@@ -136,17 +138,19 @@ class _LogsScreenState extends State<LogsScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      color: AppColors.surfaceCard,
+      color: WorkspaceColors.surfaceCard,
       child: Row(
         children: [
-          const Icon(Icons.info_outline, size: 14, color: AppColors.textMuted),
+          const Icon(Icons.info_outline,
+              size: 14, color: WorkspaceColors.textMuted),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               _selectedChain == 0
                   ? 'Local Device Chain: Linear tamper-evident log for this terminal. Works 100% offline.'
                   : 'Canonical Central Chain: Multi-investigator authoritative log on Neon, ordered strictly by server arrival time.',
-              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+              style: const TextStyle(
+                  fontSize: 11, color: WorkspaceColors.textMuted),
             ),
           ),
         ],
@@ -163,7 +167,7 @@ class _LogsScreenState extends State<LogsScreen> {
       if (visible.isEmpty) {
         return const Center(
           child: Text('No local entries recorded yet.',
-              style: TextStyle(color: AppColors.textMuted)),
+              style: TextStyle(color: WorkspaceColors.textMuted)),
         );
       }
 
@@ -180,7 +184,7 @@ class _LogsScreenState extends State<LogsScreen> {
       if (visible.isEmpty) {
         return const Center(
           child: Text('No entries in central Neon log yet.',
-              style: TextStyle(color: AppColors.textMuted)),
+              style: TextStyle(color: WorkspaceColors.textMuted)),
         );
       }
 
@@ -196,20 +200,56 @@ class _LogsScreenState extends State<LogsScreen> {
     final verification = _localVerification;
     final isLocal = _selectedChain == 0;
 
+    final isValid = isLocal ? verification?.isValid : _canonicalValid;
+    final entryCount =
+        isLocal ? _localEntries.length : _canonicalEntries.length;
+    final rootHash = isLocal
+        ? (_localEntries.isNotEmpty ? _localEntries.first.entryHash : null)
+        : (_canonicalEntries.isNotEmpty
+            ? _canonicalEntries.first.entryHash
+            : null);
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
+      padding: const EdgeInsets.fromLTRB(32, 24, 32, 16),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        border: Border(bottom: BorderSide(color: WorkspaceColors.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text('Immutable Audit Trail',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(width: 16),
+              const Text('Immutable Audit Trail',
+                  style: TextStyle(
+                      fontFamily: AppTheme.displayFamily,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: WorkspaceColors.textPrimary)),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: WorkspaceColors.inputBackground,
+                  border: Border.all(color: WorkspaceColors.border),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('LEDGER:${isLocal ? "LOCAL" : "CENTRAL"}',
+                    style: AppTheme.mono.copyWith(
+                        fontSize: 11, color: WorkspaceColors.textSecondary)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+              'Every action is recorded in a tamper-evident, hash-chained log for evidentiary integrity.',
+              style: TextStyle(
+                  fontSize: 13, color: WorkspaceColors.textSecondary)),
+          const SizedBox(height: 16),
+          if (isValid != null)
+            _buildVerificationBanner(isValid, entryCount, rootHash),
+          const SizedBox(height: 16),
+          Row(
+            children: [
               SegmentedButton<int>(
                 segments: const [
                   ButtonSegment(
@@ -235,21 +275,6 @@ class _LogsScreenState extends State<LogsScreen> {
                   visualDensity: VisualDensity.compact,
                 ),
               ),
-              const SizedBox(width: 14),
-              if (isLocal && verification != null)
-                _buildVerificationBadge(
-                  isValid: verification.isValid,
-                  text: verification.isValid
-                      ? 'Local Chain Verified · ${verification.totalEntries} entries'
-                      : 'TAMPERING DETECTED at #${verification.brokenSeq}',
-                )
-              else if (!isLocal && _canonicalValid != null)
-                _buildVerificationBadge(
-                  isValid: _canonicalValid!,
-                  text: _canonicalValid!
-                      ? 'Central Chain Verified (${_canonicalEntries.length} entries)'
-                      : 'CENTRAL CHAIN INTEGRITY BROKEN',
-                ),
               const Spacer(),
               TextButton.icon(
                 onPressed: _load,
@@ -274,34 +299,90 @@ class _LogsScreenState extends State<LogsScreen> {
     );
   }
 
-  Widget _buildVerificationBadge({
-    required bool isValid,
-    required String text,
-  }) {
-    final color = isValid ? AppColors.accentEmerald : AppColors.accentRose;
+  Widget _buildVerificationBanner(
+      bool isValid, int entryCount, String? rootHash) {
+    final color =
+        isValid ? WorkspaceColors.accentEmerald : WorkspaceColors.accentRose;
+    final verification = _localVerification;
+    final isLocal = _selectedChain == 0;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            isValid ? Icons.verified : Icons.gpp_maybe,
-            size: 15,
-            color: color,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
+          Icon(isValid ? Icons.check_circle_outline : Icons.gpp_maybe,
+              color: color, size: 22),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      isValid
+                          ? 'Chain verified · $entryCount entries'
+                          : 'Tampering detected',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: WorkspaceColors.textPrimary),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(isValid ? 'ZERO DRIFT' : 'DRIFT DETECTED',
+                          style: AppTheme.mono
+                              .copyWith(fontSize: 10, color: color)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    if (rootHash != null)
+                      Text('Root: ${_short(rootHash)}',
+                          style: AppTheme.mono.copyWith(
+                              fontSize: 11, color: WorkspaceColors.textMuted)),
+                    if (isLocal && verification != null)
+                      Text(
+                          'Last validation: ${_timestamp.format(DateTime.fromMillisecondsSinceEpoch(verification.checkedAt))}',
+                          style: AppTheme.mono.copyWith(
+                              fontSize: 11, color: WorkspaceColors.textMuted)),
+                    Text(
+                        isValid
+                            ? '0 discrepancies detected'
+                            : 'break at #${verification?.brokenSeq ?? "?"}',
+                        style: AppTheme.mono.copyWith(
+                            fontSize: 11, color: WorkspaceColors.textMuted)),
+                  ],
+                ),
+              ],
             ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(isValid ? 'INTEGRITY 100%' : 'INTEGRITY COMPROMISED',
+                style: AppTheme.mono.copyWith(
+                    fontSize: 11, fontWeight: FontWeight.bold, color: color)),
           ),
         ],
       ),
@@ -331,18 +412,18 @@ class _LogsScreenState extends State<LogsScreen> {
 
   Widget _buildLocalEntry(LogEntry entry) {
     final actorColor = switch (entry.actor) {
-      LogActor.INVESTIGATOR => AppColors.primary,
-      LogActor.ASSISTANT => AppColors.accentPurple,
-      LogActor.SYSTEM => AppColors.textMuted,
+      LogActor.INVESTIGATOR => WorkspaceColors.primary,
+      LogActor.ASSISTANT => WorkspaceColors.accentViolet,
+      LogActor.SYSTEM => WorkspaceColors.textMuted,
     };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: WorkspaceColors.surfaceCard,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: WorkspaceColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,11 +434,10 @@ class _LogsScreenState extends State<LogsScreen> {
                   style: AppTheme.mono.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary)),
+                      color: WorkspaceColors.primary)),
               const SizedBox(width: 12),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: actorColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(5),
@@ -373,20 +453,20 @@ class _LogsScreenState extends State<LogsScreen> {
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary)),
+                      color: WorkspaceColors.textPrimary)),
               const Spacer(),
               Text(
                 _timestamp
                     .format(DateTime.fromMillisecondsSinceEpoch(entry.ts)),
                 style: AppTheme.mono
-                    .copyWith(fontSize: 11, color: AppColors.textMuted),
+                    .copyWith(fontSize: 11, color: WorkspaceColors.textMuted),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text('${entry.targetType} · ${entry.targetId}',
               style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
+                  fontSize: 12, color: WorkspaceColors.textSecondary)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -394,12 +474,12 @@ class _LogsScreenState extends State<LogsScreen> {
                 child: Text(
                   'prev ${_short(entry.prevHash)}  →  this ${_short(entry.entryHash)}',
                   style: AppTheme.mono.copyWith(
-                      fontSize: 10, color: AppColors.accentEmerald),
+                      fontSize: 10, color: WorkspaceColors.accentEmerald),
                 ),
               ),
               Text('payload ${_short(entry.payloadHash)}',
-                  style: AppTheme.mono
-                      .copyWith(fontSize: 10, color: AppColors.textMuted)),
+                  style: AppTheme.mono.copyWith(
+                      fontSize: 10, color: WorkspaceColors.textMuted)),
             ],
           ),
         ],
@@ -409,18 +489,18 @@ class _LogsScreenState extends State<LogsScreen> {
 
   Widget _buildCanonicalEntry(CanonicalAuditEntry entry) {
     final actorColor = switch (entry.actor) {
-      LogActor.INVESTIGATOR => AppColors.primary,
-      LogActor.ASSISTANT => AppColors.accentPurple,
-      LogActor.SYSTEM => AppColors.textMuted,
+      LogActor.INVESTIGATOR => WorkspaceColors.primary,
+      LogActor.ASSISTANT => WorkspaceColors.accentViolet,
+      LogActor.SYSTEM => WorkspaceColors.textMuted,
     };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: WorkspaceColors.surfaceCard,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: WorkspaceColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,24 +511,22 @@ class _LogsScreenState extends State<LogsScreen> {
                   style: AppTheme.mono.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.accentEmerald)),
+                      color: WorkspaceColors.accentEmerald)),
               const SizedBox(width: 10),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceElevated,
+                  color: WorkspaceColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: WorkspaceColors.border),
                 ),
                 child: Text('Device ${entry.deviceId}',
                     style: AppTheme.mono.copyWith(
-                        fontSize: 10, color: AppColors.textMuted)),
+                        fontSize: 10, color: WorkspaceColors.textMuted)),
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: actorColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(5),
@@ -464,20 +542,20 @@ class _LogsScreenState extends State<LogsScreen> {
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary)),
+                      color: WorkspaceColors.textPrimary)),
               const Spacer(),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     'Arrived: ${_timestamp.format(DateTime.fromMillisecondsSinceEpoch(entry.serverTs))}',
-                    style: AppTheme.mono
-                        .copyWith(fontSize: 10, color: AppColors.accentEmerald),
+                    style: AppTheme.mono.copyWith(
+                        fontSize: 10, color: WorkspaceColors.accentEmerald),
                   ),
                   Text(
                     'Local: ${_timestamp.format(DateTime.fromMillisecondsSinceEpoch(entry.localTs))}',
-                    style: AppTheme.mono
-                        .copyWith(fontSize: 10, color: AppColors.textMuted),
+                    style: AppTheme.mono.copyWith(
+                        fontSize: 10, color: WorkspaceColors.textMuted),
                   ),
                 ],
               ),
@@ -486,7 +564,7 @@ class _LogsScreenState extends State<LogsScreen> {
           const SizedBox(height: 8),
           Text('${entry.targetType} · ${entry.targetId}',
               style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
+                  fontSize: 12, color: WorkspaceColors.textSecondary)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -494,12 +572,12 @@ class _LogsScreenState extends State<LogsScreen> {
                 child: Text(
                   'prev ${_short(entry.prevHash)}  →  this ${_short(entry.entryHash)}',
                   style: AppTheme.mono.copyWith(
-                      fontSize: 10, color: AppColors.accentEmerald),
+                      fontSize: 10, color: WorkspaceColors.accentEmerald),
                 ),
               ),
               Text('payload ${_short(entry.payloadHash)}',
-                  style: AppTheme.mono
-                      .copyWith(fontSize: 10, color: AppColors.textMuted)),
+                  style: AppTheme.mono.copyWith(
+                      fontSize: 10, color: WorkspaceColors.textMuted)),
             ],
           ),
         ],

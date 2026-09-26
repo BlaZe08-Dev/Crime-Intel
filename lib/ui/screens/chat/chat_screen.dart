@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/constants/constants.dart';
 import '../../../core/errors/app_exceptions.dart';
 import '../../../llm/llm_client.dart';
 import '../../../main.dart';
@@ -162,13 +163,20 @@ class _ChatScreenState extends State<ChatScreen> {
     return Column(
       children: [
         _buildHeader(),
-        if (_turns.isEmpty) Expanded(child: _buildEmptyState()) else
+        if (_turns.isEmpty)
+          Expanded(child: _buildEmptyState())
+        else
           Expanded(
-            child: ListView.builder(
-              controller: _scroll,
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-              itemCount: _turns.length,
-              itemBuilder: (_, i) => _buildTurn(_turns[i]),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 820),
+                child: ListView.builder(
+                  controller: _scroll,
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                  itemCount: _turns.length,
+                  itemBuilder: (_, i) => _buildTurn(_turns[i]),
+                ),
+              ),
             ),
           ),
         _buildComposer(),
@@ -182,49 +190,102 @@ class _ChatScreenState extends State<ChatScreen> {
     final modelOk = health?.hasModel(AppConfig.chatModel) ?? false;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
+      padding: const EdgeInsets.fromLTRB(32, 14, 32, 15),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        color: WorkspaceColors.surfaceCard,
+        border: Border(bottom: BorderSide(color: WorkspaceColors.border)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text('Assistant', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Assistant',
+                        style: TextStyle(
+                            fontFamily: AppTheme.displayFamily,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: WorkspaceColors.textPrimary)),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: WorkspaceColors.accentViolet
+                            .withValues(alpha: 0.15),
+                        border: Border.all(
+                            color: WorkspaceColors.accentViolet
+                                .withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('V${AppConstants.appVersion}',
+                          style: AppTheme.mono.copyWith(
+                              fontSize: 11,
+                              color: WorkspaceColors.accentViolet)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                const Text('Forensic AI query engine over indexed case records',
+                    style: TextStyle(
+                        fontSize: 11, color: WorkspaceColors.textSecondary)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
           if (_checking)
             const SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          else ...[
-            _pill(
-              label: llmOk ? 'Ollama connected' : 'Ollama unreachable',
-              color: llmOk ? AppColors.accentEmerald : AppColors.accentRose,
-              icon: llmOk ? Icons.check_circle_outline : Icons.cloud_off,
+          else
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _pill(
+                  label: llmOk ? 'Ollama connected' : 'Ollama unreachable',
+                  color: llmOk
+                      ? WorkspaceColors.accentEmerald
+                      : WorkspaceColors.accentRose,
+                  icon: llmOk ? Icons.check_circle_outline : Icons.cloud_off,
+                ),
+                if (llmOk)
+                  _pill(
+                    label: modelOk
+                        ? AppConfig.chatModel
+                        : '${AppConfig.chatModel} not pulled',
+                    color: modelOk
+                        ? WorkspaceColors.accentEmerald
+                        : WorkspaceColors.accentAmber,
+                    icon: Icons.memory,
+                  ),
+                _pill(
+                  label: _indexNotice ?? 'Index not built',
+                  color: _indexReady
+                      ? WorkspaceColors.textSecondary
+                      : WorkspaceColors.textMuted,
+                  icon: Icons.travel_explore,
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _buildIndex,
+                  icon: const Icon(Icons.refresh, size: 14),
+                  label: Text(_indexReady ? 'Rebuild Index' : 'Build Index'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: WorkspaceColors.textPrimary,
+                    side: const BorderSide(color: WorkspaceColors.border),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            if (llmOk)
-              _pill(
-                label: modelOk
-                    ? AppConfig.chatModel
-                    : '${AppConfig.chatModel} not pulled',
-                color: modelOk ? AppColors.primary : AppColors.accentAmber,
-                icon: Icons.memory,
-              ),
-            const SizedBox(width: 8),
-            _pill(
-              label: _indexNotice ?? 'Index not built',
-              color: _indexReady ? AppColors.accentPurple : AppColors.textMuted,
-              icon: Icons.travel_explore,
-            ),
-          ],
-          const Spacer(),
-          TextButton.icon(
-            onPressed: _busy ? null : _buildIndex,
-            icon: const Icon(Icons.refresh, size: 16),
-            label: Text(_indexReady ? 'Rebuild index' : 'Build index'),
-          ),
         ],
       ),
     );
@@ -266,68 +327,110 @@ class _ChatScreenState extends State<ChatScreen> {
     ];
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.forum_outlined,
-                size: 40, color: AppColors.textMuted),
-            const SizedBox(height: 16),
-            Text('Ask about the case database',
-                style: Theme.of(context).textTheme.displayMedium),
-            const SizedBox(height: 8),
-            const Text(
-              'Answers come only from the indexed records and audit log, and '
-              'cite the record ids they used. If nothing relevant is found, '
-              'the assistant says so rather than guessing.',
-              style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 700),
+          child: Container(
+            padding: const EdgeInsets.all(25),
+            decoration: BoxDecoration(
+              color: WorkspaceColors.surfaceCard,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: WorkspaceColors.border),
             ),
-            const SizedBox(height: 22),
-            if (!_indexReady)
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.accentAmber.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppColors.accentAmber.withValues(alpha: 0.4)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: WorkspaceColors.accentViolet.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: WorkspaceColors.accentViolet
+                            .withValues(alpha: 0.3)),
+                  ),
+                  child: const Icon(Icons.forum_outlined,
+                      size: 20, color: WorkspaceColors.accentViolet),
                 ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info_outline,
-                        size: 18, color: AppColors.accentAmber),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'The search index has not been built yet. Use "Build '
-                        'index" above - it embeds every record locally and '
-                        'takes a few seconds.',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 12),
+                const Text('Ask about the case database',
+                    style: TextStyle(
+                        fontFamily: AppTheme.displayFamily,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: WorkspaceColors.textPrimary)),
+                const SizedBox(height: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 512),
+                  child: const Text(
+                    'Answers are synthesized strictly from indexed records and the '
+                    'audit log. Every assertion carries an immutable source reference.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: WorkspaceColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.5),
+                  ),
                 ),
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final sample in samples)
-                    ActionChip(
-                      label: Text(sample,
-                          style: const TextStyle(fontSize: 12)),
-                      onPressed: () {
-                        _input.text = sample;
-                        _send();
-                      },
+                const SizedBox(height: 16),
+                if (!_indexReady)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: WorkspaceColors.accentAmber.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: WorkspaceColors.accentAmber
+                              .withValues(alpha: 0.4)),
                     ),
-                ],
-              ),
-          ],
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 18, color: WorkspaceColors.accentAmber),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'The search index has not been built yet. Use "Build '
+                            'index" above - it embeds every record locally and '
+                            'takes a few seconds.',
+                            style: TextStyle(
+                                color: WorkspaceColors.textSecondary,
+                                fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final sample in samples)
+                        OutlinedButton(
+                          onPressed: () {
+                            _input.text = sample;
+                            _send();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: WorkspaceColors.textPrimary,
+                            backgroundColor: WorkspaceColors.inputBackground,
+                            side:
+                                const BorderSide(color: WorkspaceColors.border),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: Text(sample,
+                              style: const TextStyle(fontSize: 12)),
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -341,118 +444,136 @@ class _ChatScreenState extends State<ChatScreen> {
           margin: const EdgeInsets.only(bottom: 14, left: 60),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.16),
+            color: WorkspaceColors.primary.withValues(alpha: 0.16),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+            border: Border.all(
+                color: WorkspaceColors.primary.withValues(alpha: 0.35)),
           ),
           child: Text(turn.text,
-              style: const TextStyle(color: AppColors.textPrimary)),
+              style: const TextStyle(color: WorkspaceColors.textPrimary)),
         ),
       );
     }
 
     final accent = turn.isError
-        ? AppColors.accentRose
-        : (turn.grounded ? AppColors.accentPurple : AppColors.accentAmber);
+        ? WorkspaceColors.textMuted
+        : (turn.grounded
+            ? WorkspaceColors.accentViolet
+            : WorkspaceColors.textMuted);
 
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16, right: 60),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceCard,
+          color: WorkspaceColors.surfaceCard,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: accent.withValues(alpha: 0.4)),
+          border: Border.all(color: WorkspaceColors.border),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  turn.isError
-                      ? Icons.error_outline
-                      : (turn.grounded
-                          ? Icons.auto_awesome
-                          : Icons.help_outline),
-                  size: 15,
-                  color: accent,
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  turn.isError
-                      ? 'Unavailable'
-                      : (turn.grounded ? 'Grounded answer' : 'No match'),
-                  style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: accent),
-                ),
-                if (turn.latency != null) ...[
-                  const Spacer(),
-                  Text(
-                    '${(turn.latency!.inMilliseconds / 1000).toStringAsFixed(1)}s',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted),
+                Container(width: 4, color: accent),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 20, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            _pill(
+                              label: turn.isError
+                                  ? 'UNAVAILABLE'
+                                  : (turn.grounded
+                                      ? 'GROUNDED ANSWER'
+                                      : 'NO MATCH FOUND'),
+                              color: accent,
+                              icon: turn.isError
+                                  ? Icons.error_outline
+                                  : (turn.grounded
+                                      ? Icons.auto_awesome
+                                      : Icons.help_outline),
+                            ),
+                            if (turn.latency != null) ...[
+                              const Spacer(),
+                              Text(
+                                'Latency: ${(turn.latency!.inMilliseconds)}ms',
+                                style: AppTheme.mono.copyWith(
+                                    fontSize: 11,
+                                    color: WorkspaceColors.textMuted),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        SelectableText(
+                          turn.text,
+                          style: const TextStyle(
+                              color: WorkspaceColors.textPrimary, height: 1.55),
+                        ),
+                        if (turn.noteId != null) ...[
+                          const SizedBox(height: 10),
+                          _pill(
+                            label: 'Case note ${turn.noteId} saved',
+                            color: WorkspaceColors.accentEmerald,
+                            icon: Icons.note_add_outlined,
+                          ),
+                        ],
+                        if (turn.sources.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          const Divider(
+                              height: 1, color: WorkspaceColors.border),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'SOURCES',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                              color: WorkspaceColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              for (final source in turn.sources)
+                                Tooltip(
+                                  message: '${source.sourceType} - '
+                                      'similarity ${source.score.toStringAsFixed(3)}',
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: WorkspaceColors.surfaceElevated,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: WorkspaceColors.border),
+                                    ),
+                                    child: Text(
+                                      source.sourceId,
+                                      style: AppTheme.mono.copyWith(
+                                        fontSize: 11,
+                                        color: WorkspaceColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
-            const SizedBox(height: 10),
-            SelectableText(
-              turn.text,
-              style: const TextStyle(color: AppColors.textPrimary, height: 1.55),
-            ),
-            if (turn.noteId != null) ...[
-              const SizedBox(height: 10),
-              _pill(
-                label: 'Case note ${turn.noteId} saved',
-                color: AppColors.accentEmerald,
-                icon: Icons.note_add_outlined,
-              ),
-            ],
-            if (turn.sources.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              const Divider(height: 1, color: AppColors.border),
-              const SizedBox(height: 10),
-              const Text(
-                'SOURCES',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final source in turn.sources)
-                    Tooltip(
-                      message: '${source.sourceType} - '
-                          'similarity ${source.score.toStringAsFixed(3)}',
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceElevated,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Text(
-                          source.sourceId,
-                          style: AppTheme.mono.copyWith(
-                            fontSize: 11,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -460,42 +581,70 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildComposer() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
+      padding: const EdgeInsets.fromLTRB(32, 12, 32, 16),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+        color: WorkspaceColors.surfaceCard,
+        border: Border(top: BorderSide(color: WorkspaceColors.border)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _input,
-              enabled: !_busy,
-              onSubmitted: (_) => _send(),
-              decoration: InputDecoration(
-                hintText: _indexReady
-                    ? 'Ask about a subject, a transaction, or the audit trail...'
-                    : 'Build the search index before asking questions',
-                prefixIcon: const Icon(Icons.search, size: 18),
-              ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: WorkspaceColors.inputBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: WorkspaceColors.border),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _input,
+                    enabled: !_busy,
+                    onSubmitted: (_) => _send(),
+                    style: const TextStyle(
+                        fontSize: 14, color: WorkspaceColors.textPrimary),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: false,
+                      border: InputBorder.none,
+                      hintText: _indexReady
+                          ? 'Ask about a subject, an account, or verify audit logs...'
+                          : 'Build the search index before asking questions',
+                      hintStyle: const TextStyle(
+                          color: WorkspaceColors.textMuted, fontSize: 14),
+                      prefixIcon: const Icon(Icons.search,
+                          size: 18, color: WorkspaceColors.textMuted),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: FilledButton(
+                    onPressed: _busy ? null : _send,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: WorkspaceColors.primary,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: _busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.black),
+                          )
+                        : const Icon(Icons.send, size: 18),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
-          FilledButton(
-            onPressed: _busy ? null : _send,
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-            ),
-            child: _busy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.black),
-                  )
-                : const Icon(Icons.send, size: 18),
-          ),
-        ],
+        ),
       ),
     );
   }

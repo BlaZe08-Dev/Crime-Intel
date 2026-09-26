@@ -98,7 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_error != null) {
       return Center(
         child: Text('Could not load the dashboard: $_error',
-            style: const TextStyle(color: AppColors.accentRose)),
+            style: const TextStyle(color: WorkspaceColors.accentRose)),
       );
     }
 
@@ -107,7 +107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _buildHeader(),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -126,15 +126,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final verification = _verification;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
+      padding: const EdgeInsets.fromLTRB(32, 24, 32, 16),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        border: Border(bottom: BorderSide(color: WorkspaceColors.border)),
       ),
       child: Row(
         children: [
-          Text('Investigator Workspace',
-              style: Theme.of(context).textTheme.titleLarge),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Investigator Workspace',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: WorkspaceColors.textPrimary, fontSize: 24)),
+              const SizedBox(height: 2),
+              const Text(
+                  'Synthetic case data // Operational link-analysis environment',
+                  style: TextStyle(
+                      fontSize: 12, color: WorkspaceColors.textSecondary)),
+            ],
+          ),
           const Spacer(),
           if (verification != null)
             Container(
@@ -142,14 +152,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: (verification.isValid
-                        ? AppColors.accentEmerald
-                        : AppColors.accentRose)
+                        ? WorkspaceColors.accentEmerald
+                        : WorkspaceColors.accentRose)
                     .withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: verification.isValid
-                      ? AppColors.accentEmerald
-                      : AppColors.accentRose,
+                      ? WorkspaceColors.accentEmerald
+                      : WorkspaceColors.accentRose,
                 ),
               ),
               child: Row(
@@ -159,8 +169,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     verification.isValid ? Icons.verified : Icons.gpp_maybe,
                     size: 15,
                     color: verification.isValid
-                        ? AppColors.accentEmerald
-                        : AppColors.accentRose,
+                        ? WorkspaceColors.accentEmerald
+                        : WorkspaceColors.accentRose,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -171,8 +181,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: verification.isValid
-                          ? AppColors.accentEmerald
-                          : AppColors.accentRose,
+                          ? WorkspaceColors.accentEmerald
+                          : WorkspaceColors.accentRose,
                     ),
                   ),
                 ],
@@ -181,7 +191,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             onPressed: _load,
             tooltip: 'Refresh and re-verify',
-            icon: const Icon(Icons.refresh, color: AppColors.textSecondary),
+            icon:
+                const Icon(Icons.refresh, color: WorkspaceColors.textSecondary),
           ),
         ],
       ),
@@ -204,7 +215,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               value: '${_criminals.length}',
               subtitle: 'Synthetic records',
               icon: Icons.person_search_outlined,
-              color: AppColors.primary,
+              color: WorkspaceColors.primary,
               width: width,
             ),
             _statCard(
@@ -213,7 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Honest now: these really are extracted.
               subtitle: 'Extracted from FIR/intel text',
               icon: Icons.hub_outlined,
-              color: AppColors.accentAmber,
+              color: WorkspaceColors.accentAmber,
               width: width,
             ),
             _statCard(
@@ -221,7 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               value: '${network?.edges.length ?? 0}',
               subtitle: 'Derived from CDR, financial, co-mention',
               icon: Icons.share_outlined,
-              color: AppColors.accentPurple,
+              color: WorkspaceColors.accentViolet,
               width: width,
             ),
             _statCard(
@@ -232,7 +243,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ? '$anomalies pattern${anomalies == 1 ? "" : "s"} flagged'
                   : 'Hash-chained, append-only',
               icon: Icons.lock_outline,
-              color: AppColors.accentEmerald,
+              color: WorkspaceColors.accentEmerald,
               width: width,
             ),
           ],
@@ -253,9 +264,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       width: width.clamp(210.0, 420.0),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: WorkspaceColors.surfaceCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: WorkspaceColors.border),
       ),
       child: Row(
         children: [
@@ -274,17 +285,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(title,
                     style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
+                        fontSize: 12, color: WorkspaceColors.textSecondary)),
                 Text(value,
                     style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary)),
+                        color: WorkspaceColors.textPrimary)),
                 Text(subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted)),
+                        fontSize: 11, color: WorkspaceColors.textMuted)),
               ],
             ),
           ),
@@ -298,11 +309,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          flex: 6,
+          flex: 7,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _sectionHeader('Criminal Network Targets', Icons.groups_outlined),
+              _sectionHeader(
+                'Criminal Network Targets',
+                '${_criminals.length} primary subjects tracked',
+                trailing: OutlinedButton.icon(
+                  onPressed: null,
+                  icon: const Icon(Icons.filter_alt_outlined, size: 14),
+                  label: const Text('Filter Targets'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: WorkspaceColors.textPrimary,
+                    side: const BorderSide(color: WorkspaceColors.border),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               for (final criminal in _criminals) _criminalCard(criminal),
             ],
@@ -310,11 +334,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(width: 24),
         Expanded(
-          flex: 4,
+          flex: 5,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _sectionHeader('Recent Activity', Icons.receipt_long_outlined),
+              _sectionHeader(
+                'Recent Activity',
+                'Live immutable audit stream',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                          color: WorkspaceColors.accentEmerald,
+                          shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 6),
+                    Text('APPEND ONLY',
+                        style: AppTheme.mono.copyWith(
+                            fontSize: 11, color: WorkspaceColors.textMuted)),
+                  ],
+                ),
+              ),
               const SizedBox(height: 12),
               _auditFeed(),
             ],
@@ -324,11 +367,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _sectionHeader(String title, IconData icon) => Row(
+  Widget _sectionHeader(String title, String subtitle, {Widget? trailing}) =>
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 19, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontFamily: AppTheme.displayFamily,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: WorkspaceColors.textPrimary)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 12, color: WorkspaceColors.textMuted)),
+              ],
+            ),
+          ),
+          if (trailing != null) trailing,
         ],
       );
 
@@ -343,8 +402,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isHub ? AppColors.accentAmber.withValues(alpha: 0.65)
-                       : AppColors.border,
+          color: isHub
+              ? WorkspaceColors.accentAmber.withValues(alpha: 0.65)
+              : WorkspaceColors.border,
           width: isHub ? 1.6 : 1,
         ),
       ),
@@ -352,73 +412,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(12),
         onTap: () => _openRecord(criminal),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(17),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 21,
-                    backgroundColor: AppColors.surfaceElevated,
-                    child: Text(criminal.id,
-                        style: AppTheme.mono.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary)),
-                  ),
-                  const SizedBox(width: 14),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(criminal.name,
-                                  style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary)),
-                            ),
-                            if (isHub) ...[
-                              const SizedBox(width: 8),
-                              _badge('NETWORK HUB', AppColors.accentAmber),
-                            ],
-                            if (flags.isNotEmpty) ...[
-                              const SizedBox(width: 6),
-                              _badge('${flags.length} FLAGGED',
-                                  AppColors.accentRose),
-                            ],
-                          ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 9, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: WorkspaceColors.inputBackground,
+                            border: Border.all(color: WorkspaceColors.border),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(criminal.id,
+                              style: AppTheme.mono.copyWith(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: WorkspaceColors.textSecondary)),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Aliases: ${criminal.aliases.join(", ")} · '
-                          '${criminal.lastKnownLoc}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
-                        ),
+                        Text(criminal.name,
+                            style: const TextStyle(
+                                fontFamily: AppTheme.displayFamily,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: WorkspaceColors.textPrimary)),
                       ],
                     ),
                   ),
-                  _riskBadge(criminal.riskLevel),
                   const SizedBox(width: 8),
-                  _chip(criminal.status.displayName),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      _riskBadge(criminal.riskLevel),
+                      _statusBadge(criminal.status),
+                      if (isHub) _hubBadge(),
+                      if (flags.isNotEmpty)
+                        _badge('${flags.length} FLAGGED',
+                            WorkspaceColors.accentRose),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(6),
+              const SizedBox(height: 4),
+              Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                      fontSize: 12, color: WorkspaceColors.textMuted),
+                  children: [
+                    const TextSpan(text: 'Aliases: '),
+                    TextSpan(
+                        text: criminal.aliases.join(", "),
+                        style: const TextStyle(
+                            color: WorkspaceColors.textSecondary)),
+                  ],
                 ),
-                child: Text('Known for: ${criminal.knownFor}',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
+              ),
+              const SizedBox(height: 4),
+              Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: WorkspaceColors.textSecondary),
+                  children: [
+                    const TextSpan(text: 'Known for: '),
+                    TextSpan(
+                        text: criminal.knownFor,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.normal,
+                            color: WorkspaceColors.textMuted)),
+                  ],
+                ),
               ),
             ],
           ),
@@ -427,114 +502,161 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _badge(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+  Widget _badge(String text, Color color, {IconData? icon}) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: color),
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
-        child: Text(text,
-            style: TextStyle(
-                fontSize: 9, fontWeight: FontWeight.bold, color: color)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 10, color: color),
+              const SizedBox(width: 4),
+            ],
+            Text(text,
+                style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w500, color: color)),
+          ],
+        ),
       );
 
   Widget _riskBadge(RiskLevel risk) {
     final color = switch (risk) {
-      RiskLevel.HIGH => AppColors.accentRose,
-      RiskLevel.MED => AppColors.accentAmber,
-      RiskLevel.LOW => AppColors.accentEmerald,
+      RiskLevel.HIGH => WorkspaceColors.accentRose,
+      RiskLevel.MED => WorkspaceColors.accentAmber,
+      RiskLevel.LOW => WorkspaceColors.accentEmerald,
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color),
-      ),
-      child: Text(risk.displayName,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.bold, color: color)),
-    );
+    return _badge(risk.displayName, color);
   }
 
-  Widget _chip(String label) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Text(label,
-            style: const TextStyle(
-                fontSize: 11, color: AppColors.textSecondary)),
-      );
+  Widget _statusBadge(CriminalStatus status) {
+    final color = switch (status) {
+      CriminalStatus.AT_LARGE => WorkspaceColors.accentRose,
+      CriminalStatus.IN_CUSTODY => WorkspaceColors.accentEmerald,
+      CriminalStatus.UNDER_WATCH => WorkspaceColors.textSecondary,
+      CriminalStatus.DECEASED => WorkspaceColors.textMuted,
+    };
+    return _badge(status.displayName, color);
+  }
+
+  Widget _hubBadge() =>
+      _badge('NETWORK HUB', WorkspaceColors.accentAmber, icon: Icons.bolt);
+
+  Color _actionColor(LogAction action) {
+    switch (action) {
+      case LogAction.LLM_QUERY:
+      case LogAction.ENHANCE_IMAGE:
+      case LogAction.ATTACH_NEWS:
+        return WorkspaceColors.accentViolet;
+      case LogAction.VIEW_RECORD:
+      case LogAction.UPLOAD:
+      case LogAction.UPDATE:
+        return WorkspaceColors.accentEmerald;
+      case LogAction.CREATE_CASENOTE:
+        return WorkspaceColors.primary;
+      case LogAction.DELETE:
+      case LogAction.LOGIN_FAIL:
+      case LogAction.MODEL_PULL_FAILED:
+        return WorkspaceColors.accentRose;
+      case LogAction.MODEL_PULL_STARTED:
+      case LogAction.MODEL_PULL_COMPLETED:
+        return WorkspaceColors.accentAmber;
+      case LogAction.LOGIN_OK:
+      case LogAction.OTP_SENT:
+      case LogAction.OTP_OK:
+      case LogAction.PASSWORD_RESET:
+        return WorkspaceColors.textSecondary;
+    }
+  }
+
+  String _shortHash(String hash) => hash.length > 8
+      ? '${hash.substring(0, 4)}...${hash.substring(hash.length - 4)}'
+      : hash;
 
   Widget _auditFeed() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: WorkspaceColors.surfaceCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: WorkspaceColors.border),
       ),
       child: _recentLogs.isEmpty
           ? const Padding(
               padding: EdgeInsets.all(20),
               child: Text('No audit entries yet.',
-                  style: TextStyle(color: AppColors.textMuted)),
+                  style: TextStyle(color: WorkspaceColors.textMuted)),
             )
           : Column(
               children: [
-                for (final entry in _recentLogs)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: AppColors.border.withValues(alpha: 0.5)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text('#${entry.seq}',
-                                style: AppTheme.mono.copyWith(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(entry.action.displayName,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary)),
-                            ),
-                            Text(
-                              _clock.format(DateTime
-                                  .fromMillisecondsSinceEpoch(entry.ts)),
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.textMuted),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${entry.actor.displayName} · '
-                          '${entry.targetType} [${entry.targetId}]',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
+                for (var i = 0; i < _recentLogs.length; i++)
+                  _auditEntry(_recentLogs[i],
+                      isFirst: i == 0, isLast: i == _recentLogs.length - 1),
               ],
             ),
+    );
+  }
+
+  Widget _auditEntry(LogEntry e,
+      {required bool isFirst, required bool isLast}) {
+    return Container(
+      padding: EdgeInsets.only(top: isFirst ? 0 : 12, bottom: 13),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : Border(
+                bottom: BorderSide(
+                    color: WorkspaceColors.border.withValues(alpha: 0.6))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('#${e.seq}',
+                  style: AppTheme.mono.copyWith(
+                      fontSize: 11, color: WorkspaceColors.textMuted)),
+              const SizedBox(width: 8),
+              _badge(e.action.displayName, _actionColor(e.action)),
+              const Spacer(),
+              Text(
+                _clock.format(DateTime.fromMillisecondsSinceEpoch(e.ts)),
+                style: AppTheme.mono
+                    .copyWith(fontSize: 11, color: WorkspaceColors.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${e.action.displayName} for ${e.targetType} [${e.targetId}]',
+            style: const TextStyle(
+                fontSize: 12, color: WorkspaceColors.textPrimary),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Text('SHA256:',
+                  style: AppTheme.mono.copyWith(
+                      fontSize: 11, color: WorkspaceColors.textMuted)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: WorkspaceColors.inputBackground,
+                  border: Border.all(color: WorkspaceColors.border),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(_shortHash(e.entryHash),
+                    style: AppTheme.mono.copyWith(
+                        fontSize: 11, color: WorkspaceColors.textSecondary)),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
